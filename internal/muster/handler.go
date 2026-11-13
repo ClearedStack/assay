@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"strings"
 
 	"github.com/ClearedStack/assay/internal/contract"
 	"github.com/ClearedStack/assay/internal/errs"
@@ -24,8 +25,9 @@ import (
 //	POST /v1/needs_subtool  {contract, lease}                 200 {id, state}
 //
 // A body with a field the call does not define is refused. Every refusal
-// is a status and a body of {error, cause, reason}. When token is not
-// empty, calls must present it as a bearer token.
+// is a status and a body of {error, cause, reason}, in the words of
+// Muster's contract. When token is not empty, calls must present it as a
+// bearer token.
 func (m *Memory) Handler(token string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls := map[string]func(http.ResponseWriter, []byte){
@@ -37,50 +39,63 @@ func (m *Memory) Handler(token string) http.Handler {
 		}
 		serve, ok := calls[r.URL.Path]
 		if !ok {
-			refuse(w, http.StatusNotFound, errs.Parse, "no_such_call", "no such call")
+			refuse(w, http.StatusNotFound, noSuchCall)
 			return
 		}
 		if r.Method != http.MethodPost {
-			refuse(w, http.StatusMethodNotAllowed, errs.Parse, "wrong_method", "this call does not accept that method")
+			refuse(w, http.StatusMethodNotAllowed, wrongMethod)
 			return
 		}
 		if mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); err != nil || mediaType != "application/json" {
-			refuse(w, http.StatusUnsupportedMediaType, errs.Parse, "wrong_type", "the content type must be application/json")
+			refuse(w, http.StatusUnsupportedMediaType, wrongType)
 			return
 		}
 		if token != "" && r.Header.Get("Authorization") != "Bearer "+token {
-			refuse(w, http.StatusUnauthorized, errs.Parse, "no_credential", "no valid credential was presented")
+			refuse(w, http.StatusUnauthorized, noCredential)
 			return
 		}
 		body, err := io.ReadAll(io.LimitReader(r.Body, contract.MaxRequestBytes+1))
 		if err != nil {
-			refuse(w, http.StatusBadRequest, errs.Parse, "unreadable", "the request could not be read")
+			refuse(w, http.StatusBadRequest, notJSON)
 			return
 		}
 		if len(body) > contract.MaxRequestBytes {
-			refuse(w, http.StatusRequestEntityTooLarge, errs.Parse, "too_large", "the request is too large")
+			refuse(w, http.StatusRequestEntityTooLarge, tooLarge)
 			return
 		}
 		serve(w, body)
 	})
 }
 
-// decode reads a request body into the fields its call defines. An unknown
-// field, a missing contract or one Muster does not know is refused.
+// decode reads a request body into the fields its call defines. A body
+// that is not one JSON value, has an unknown field, a field of the wrong
+// type, no contract, or a contract Muster does not know is refused.
 func decode(w http.ResponseWriter, body []byte, into interface{ version() string }) bool {
 	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.DisallowUnknownFields()
-	if err := dec.Decode(into); err != nil || dec.More() {
-		refuse(w, http.StatusBadRequest, errs.Parse, "malformed", "a required field is missing or malformed")
+	if err := dec.Decode(into); err != nil {
+		var wrongKind *json.UnmarshalTypeError
+		switch {
+		case strings.HasPrefix(err.Error(), "json: unknown field"):
+			refuse(w, http.StatusBadRequest, unknownField)
+		case errors.As(err, &wrongKind):
+			refuse(w, http.StatusBadRequest, badField)
+		default:
+			refuse(w, http.StatusBadRequest, notJSON)
+		}
+		return false
+	}
+	if dec.More() {
+		refuse(w, http.StatusBadRequest, notJSON)
 		return false
 	}
 	switch into.version() {
 	case contract.Version:
 		return true
 	case "":
-		refuse(w, http.StatusBadRequest, errs.Parse, "malformed", "a required field is missing or malformed")
+		refuse(w, http.StatusBadRequest, missingField)
 	default:
-		refuse(w, http.StatusUnprocessableEntity, errs.NeedsSubtool, "unknown_version", "this contract version is not known")
+		refuse(w, http.StatusUnprocessableEntity, unknownContract)
 	}
 	return false
 }
@@ -127,7 +142,7 @@ func (m *Memory) serveHeartbeat(w http.ResponseWriter, body []byte) {
 		return
 	}
 	if req.Lease == "" {
-		refuse(w, http.StatusBadRequest, errs.Parse, "malformed", "a required field is missing or malformed")
+		refuse(w, http.StatusBadRequest, missingField)
 		return
 	}
 	if err := m.Heartbeat(context.Background(), req.Lease); err != nil {
@@ -147,7 +162,11 @@ func (m *Memory) serveComplete(w http.ResponseWriter, body []byte) {
 		return
 	}
 	if req.Lease == "" || req.State == "" {
-		refuse(w, http.StatusBadRequest, errs.Parse, "malformed", "a required field is missing or malformed")
+		refuse(w, http.StatusBadRequest, missingField)
+		return
+	}
+	if len(req.Result) > 0 && !isObject(req.Result) {
+		refuse(w, http.StatusBadRequest, badField)
 		return
 	}
 	id := m.itemID(req.Lease)
@@ -167,11 +186,11 @@ func (m *Memory) serveFail(w http.ResponseWriter, body []byte) {
 		return
 	}
 	if req.Lease == "" || req.Code == "" {
-		refuse(w, http.StatusBadRequest, errs.Parse, "malformed", "a required field is missing or malformed")
+		refuse(w, http.StatusBadRequest, missingField)
 		return
 	}
 	if req.Code == errs.NeedsSubtool {
-		refuse(w, http.StatusBadRequest, errs.Parse, "use_needs_subtool", "report a missing rule with the needs_subtool call")
+		refuse(w, http.StatusBadRequest, useNeedsSubtool)
 		return
 	}
 	id := m.itemID(req.Lease)
@@ -192,7 +211,7 @@ func (m *Memory) serveNeedsSubtool(w http.ResponseWriter, body []byte) {
 		return
 	}
 	if req.Lease == "" {
-		refuse(w, http.StatusBadRequest, errs.Parse, "malformed", "a required field is missing or malformed")
+		refuse(w, http.StatusBadRequest, missingField)
 		return
 	}
 	id := m.itemID(req.Lease)
@@ -224,13 +243,38 @@ func answer(w http.ResponseWriter, body map[string]any) {
 	_ = json.NewEncoder(w).Encode(body)
 }
 
-// refuse writes a refusal: a status and {error, cause, reason}. The cause
-// is a fixed word and the reason a fixed sentence; neither is built from
-// the request.
-func refuse(w http.ResponseWriter, status int, code errs.Code, cause, reason string) {
+// problem is one refusal: one of the three codes, a fixed word a program
+// can act on, and a fixed sentence for a person. The words are the ones
+// Muster's contract lists; a test replays Muster's own examples against
+// this stand-in to keep them so.
+type problem struct {
+	Error  errs.Code `json:"error"`
+	Cause  string    `json:"cause"`
+	Reason string    `json:"reason"`
+}
+
+var (
+	notJSON         = problem{errs.Parse, "not_json", "the request is not one json value"}
+	unknownField    = problem{errs.Parse, "unknown_field", "the request has a field this call does not define"}
+	missingField    = problem{errs.Parse, "missing_field", "a required field is missing"}
+	badField        = problem{errs.Parse, "bad_field", "a field does not have the form this call requires"}
+	useNeedsSubtool = problem{errs.Parse, "bad_field", "report a missing rule with the needs_subtool call"}
+	noCredential    = problem{errs.Parse, "no_credential", "no valid credential was presented"}
+	noSuchCall      = problem{errs.Parse, "no_such_call", "no such call"}
+	wrongMethod     = problem{errs.Parse, "wrong_method", "this call does not accept that method"}
+	tooLarge        = problem{errs.Parse, "too_large", "the request is too large"}
+	wrongType       = problem{errs.Parse, "wrong_type", "the content type must be application/json"}
+	leaseNotHeld    = problem{errs.Parse, "lease_not_held", "the lease is not held"}
+	moveNotAllowed  = problem{errs.Parse, "move_not_allowed", "that move is not allowed"}
+	unknownContract = problem{errs.NeedsSubtool, "unknown_contract", "this contract version is not known"}
+	busy            = problem{errs.Timeout, "busy", "too busy; try again"}
+)
+
+// refuse writes a refusal: a status and a body of exactly three fields.
+func refuse(w http.ResponseWriter, status int, p problem) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": string(code), "cause": cause, "reason": reason})
+	_ = json.NewEncoder(w).Encode(p)
 }
 
 // refuseError turns an error from the stand-in into the refusal Muster
@@ -238,11 +282,13 @@ func refuse(w http.ResponseWriter, status int, code errs.Code, cause, reason str
 func refuseError(w http.ResponseWriter, err error) {
 	var pub *errs.Error
 	switch {
+	case errors.Is(err, errMoveNotAllowed):
+		refuse(w, http.StatusConflict, moveNotAllowed)
 	case errors.Is(err, ErrLeaseGone):
-		refuse(w, http.StatusConflict, errs.Parse, "lease_not_held", "the lease is not held")
+		refuse(w, http.StatusConflict, leaseNotHeld)
 	case errors.As(err, &pub) && pub.Code == errs.Parse:
-		refuse(w, http.StatusBadRequest, errs.Parse, "malformed", "a required field is missing or malformed")
+		refuse(w, http.StatusBadRequest, badField)
 	default:
-		refuse(w, http.StatusServiceUnavailable, errs.Timeout, "busy", "too busy; try again")
+		refuse(w, http.StatusServiceUnavailable, busy)
 	}
 }

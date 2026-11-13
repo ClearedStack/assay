@@ -39,8 +39,10 @@ const (
 
 var (
 	// The form Muster gives item identifiers: PA-0001 up to PA-999999999.
-	itemIDPattern   = regexp.MustCompile(`^PA-([0-9]{4}|[1-9][0-9]{4,8})$`)
-	leaseIDPattern  = regexp.MustCompile(`^[A-Za-z0-9._~-]{1,128}$`)
+	itemIDPattern = regexp.MustCompile(`^PA-([0-9]{4}|[1-9][0-9]{4,8})$`)
+	// A lease identifier is Muster's to choose. Its examples include
+	// PA-0001.2 and release:PA-0001.2.
+	leaseIDPattern  = regexp.MustCompile(`^[A-Za-z0-9._~:-]{1,128}$`)
 	categoryPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
 	// A timestamp such as 2026-01-05T09:01:00Z. Assay never reads the
 	// clock, so the value is only checked for shape.
@@ -79,9 +81,10 @@ type Record struct {
 // ParseLease reads one lease reply strictly.
 //
 // A lease reply is the JSON object Muster answers POST /v1/lease with:
-// lease, kind, id, state, lane, attempt, expires and results. Assay scores
-// results.sextant, which must hold a category and a flat map of facts.
-// Results left by other workers are ignored.
+// lease, kind, id, state, lane, attempt, expires, results and, for an item
+// that was reported through Muster, found. Assay scores results.sextant,
+// which must hold a category and a flat map of facts. Results left by other
+// workers, and found, are ignored.
 //
 // Broken data gives E_PARSE: bad JSON, a repeated key, a missing or
 // mistyped field. Well-formed data this build does not recognise gives
@@ -151,6 +154,13 @@ func ParseLease(data []byte) (*Record, *errs.Error) {
 		return rec, errs.New(errs.Parse, errs.InvalidValue, "attempt")
 	}
 
+	// found is what was recorded when the item was first reported: where
+	// it came from, its title and its address. Assay does not read it, and
+	// scores only the structured facts under results.
+	if found, ok := root.obj["found"]; ok && found.kind != nodeObject {
+		return rec, errs.New(errs.Parse, errs.InvalidType, "found")
+	}
+
 	results, ok := root.obj["results"]
 	if !ok {
 		return rec, errs.New(errs.Parse, errs.MissingField, "results")
@@ -203,7 +213,7 @@ func ParseLease(data []byte) (*Record, *errs.Error) {
 	if !hasCategory {
 		return rec, errs.New(errs.NeedsSubtool, errs.UnknownCategory, "category")
 	}
-	if name := firstUnknown(root, "lease", "kind", "id", "state", "lane", "attempt", "expires", "results"); name != "" {
+	if name := firstUnknown(root, "lease", "kind", "id", "state", "lane", "attempt", "expires", "found", "results"); name != "" {
 		return rec, errs.New(errs.NeedsSubtool, errs.UnknownField, "record", name)
 	}
 	if name := firstUnknown(observed, "category", "facts"); name != "" {

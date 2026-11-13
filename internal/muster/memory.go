@@ -165,7 +165,7 @@ func (m *Memory) Send(ctx context.Context, r Report) error {
 	switch r.Call {
 	case CallComplete:
 		if r.State != contract.StateScored && r.State != contract.StateScreenedOut {
-			return ErrLeaseGone // that move is not allowed
+			return errMoveNotAllowed
 		}
 		if len(r.Result) > 0 {
 			var obj map[string]json.RawMessage

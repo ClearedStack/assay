@@ -12,40 +12,40 @@
 
 ---
 
-> **Status: built, not yet deployed.** Everything in the specification is built and tested here against a stand-in for Muster. It has not yet talked to a real Muster or run in the cluster. What is still open is listed under [Not yet done](#not-yet-done).
+> **Status: built, not yet deployed.** Everything in the specification is built and tested here. Assay speaks Muster's contract v1 and replays Muster's own saved examples, but it has not yet talked to a running Muster or run in the cluster. What is still open is listed under [Not yet done](#not-yet-done).
 
 Assay is stage 03 of the ClearedStack pipeline. ClearedStack is an open pipeline that finds ideas for government-contracting tools, screens and scores them, and builds each one from the public rule. Assay is meant to be understood and used without the rest.
 
 ## What works today
 
-Assay takes one *observed record* (a small JSON file of facts about a candidate tool) and decides, with no AI and no network:
+Assay takes one *lease reply* (the JSON Muster hands a worker: an item, its state, and the facts Sextant observed about it) and decides, with no AI and no network:
 
 1. **Five knockout gates**, each pass or fail with a public reason: Public source, Runs in the browser, Private by design, One job, and Arithmetic, not advice.
 2. **The 100-point rubric**, for candidates that clear all five gates: seven factors rated 1 to 5 and weighted, giving a total from 20 to 100.
 3. **A recommendation**: Build, Link, Park or Reject, plus a flag for split/merge review.
 4. **Five tie-breaker values**, so candidates with the same total always sort the same way.
 
-A candidate ends in one of three states: `scored`, `screened-out`, or `needs_subtool` (paused, because no rule covers it). Broken input is refused with `E_PARSE`.
+A candidate ends in one of three states: `scored`, `screened_out`, or `needs_subtool` (paused, because no rule covers it). Broken input is refused with `E_PARSE`.
 
-As a worker, Assay polls Muster for records lane by lane (`urgent`, then `normal`, then `backfill`), evaluates each one and hands the outcome back. If Muster cannot take a finished outcome, Assay keeps it in a spool folder and delivers it first on the next try.
+As a worker, Assay asks Muster for its next item, evaluates it and reports what it decided. Muster offers the `urgent` lane first, then `normal`, then `backfill`. If Muster cannot take a finished report, Assay keeps it in a spool folder and delivers it first on the next try.
 
-The same record gives the same outcome, byte for byte, on any machine.
+The same facts give the same outcome, byte for byte, on any machine. Assay uses only the Go standard library.
 
 ## Run it
 
 You need Go 1.24 or later. Nothing else.
 
 ```sh
-# Evaluate one record and read the result
+# Evaluate one lease reply and read the result
 go run ./cmd/assay eval tools/rubric-profiles/pricing/fixtures/build.input.json
 
-# The same result as JSON, exactly as it would be handed to Muster
+# The same result as JSON, which is the result Assay sends Muster
 go run ./cmd/assay eval -format json tools/rubric-profiles/pricing/fixtures/build.input.json
 
-# Evaluate several records and print the scored ones in order
+# Evaluate several and print the scored ones in order
 go run ./cmd/assay rank tools/rubric-profiles/*/fixtures/build.input.json
 
-# Run the real worker loop over a folder of records, with an in-memory stand-in for Muster
+# Run the real worker loop over a folder of lease replies, with an in-memory stand-in for Muster
 mkdir -p /tmp/assay-demo && cp tools/rubric-profiles/pricing/fixtures/*.input.json /tmp/assay-demo/
 go run ./cmd/assay run -standin /tmp/assay-demo
 
@@ -56,7 +56,7 @@ go test ./...
 `eval` prints something like this:
 
 ```text
-Item:     pricing-build
+Item:     PA-4001
 Category: pricing
 Rules:    rubric v1, profile pricing v1
 State:    scored
@@ -78,7 +78,7 @@ Recommendation: Build
 Split/merge review: no
 ```
 
-`eval` exits with 0 for `scored` or `screened-out`, 3 for `E_NEEDS_SUBTOOL` and 4 for `E_PARSE`.
+`eval` exits with 0 for `scored` or `screened_out`, 3 for `E_NEEDS_SUBTOOL` and 4 for `E_PARSE`.
 
 ### As a worker
 
@@ -89,11 +89,29 @@ Split/merge review: no
 | `MUSTER_URL` | none, required | Address of Muster, for example `http://muster.clearedstack.svc.cluster.local`. |
 | `CONTRACT_VERSION` | `v1` | If set, must be `v1`. Assay refuses to start under any other contract. |
 | `ASSAY_SPOOL_DIR` | `/var/spool/cs` | The one folder Assay writes to. |
-| `ASSAY_TOKEN_FILE` | the pod's ServiceAccount token | Read afresh for every request. Set it to empty to send no token. |
-| `ASSAY_POLL_INTERVAL` | `5s` | Wait after finding every lane empty. |
+| `ASSAY_TOKEN_FILE` | the pod's ServiceAccount token | Read afresh for every call. Set it to empty to send no token. |
+| `ASSAY_POLL_INTERVAL` | `5s` | Wait after Muster had nothing to offer. |
 | `ASSAY_HUB_TIMEOUT` | `10s` | Limit on each call to Muster. |
 
 The image is built from source with [`ko`](https://ko.build); there is no Dockerfile. [`.ko.yaml`](.ko.yaml) holds the build settings and [`deploy/assay.yaml`](deploy/assay.yaml) the ServiceAccount, the hardened Deployment and the default-deny NetworkPolicy.
+
+### What Assay says to Muster
+
+Assay makes the five worker calls of [Muster's contract v1](https://github.com/ClearedStack/muster/blob/main/contract/v1/CONTRACT.md). Every body carries `"contract": "v1"` and only the fields that call defines.
+
+| When | Call | Body |
+| --- | --- | --- |
+| Asking for work | `POST /v1/lease` | `contract` |
+| The candidate cleared the gates and was scored | `POST /v1/complete` | `contract`, `lease`, `state` `scored`, and the whole outcome as `result` |
+| The candidate failed a gate | `POST /v1/complete` | the same, with `state` `screened_out` |
+| No rule covers the item | `POST /v1/needs_subtool` | `contract`, `lease` |
+| The lease's data was broken | `POST /v1/fail` | `contract`, `lease`, `code` `E_PARSE` |
+
+`POST /v1/heartbeat` is implemented and tested, but the loop never needs it: scoring an item takes far less than the 60 seconds a lease lasts.
+
+The `fail` and `needs_subtool` calls have no field for a reason, so the reason, the place and the fingerprint of an error go to Assay's own log, one JSON line per item.
+
+A refusal from Muster is acted on by its status and its code: `E_TIMEOUT` means wait and try again; `E_PARSE` means trying again will not help, so the report is let go; a `409` means the lease is gone; a refused token (`401`, `403`) is waited out. Nothing Muster writes in a refusal is repeated in Assay's logs.
 
 ## The rules are data
 
@@ -102,9 +120,9 @@ No threshold lives in Go code. Everything is under [`tools/rubric-profiles/`](to
 | Part | Where | What it holds |
 | --- | --- | --- |
 | Shared rubric | `rubric.yaml` | The five gates, the seven factors and their weights, the recommendation bands, the split/merge condition and the tie-breaker order. A test holds these to the numbers in `SPEC.md`. |
-| Matching rule | `<category>/match.yaml` | Which records a profile takes. |
-| Logic | `<category>/profile.yaml` | The facts a record of that category must carry, and a decision table for each gate and each factor. |
-| Fixtures | `<category>/fixtures/` | Saved inputs (`*.input.json`) and the exact output expected for each (`*.golden.json`). |
+| Matching rule | `<category>/match.yaml` | Which items a profile takes. |
+| Logic | `<category>/profile.yaml` | The facts an observation of that category must carry, and a decision table for each gate and each factor. |
+| Fixtures | `<category>/fixtures/` | Saved lease replies (`*.input.json`) and the exact outcome expected for each (`*.golden.json`). |
 
 There are five profiles: `pricing`, `proposal`, `cyber`, `market` and `devsecops`.
 
@@ -127,9 +145,9 @@ The tests enforce three things about the rules:
 
 | Code | Meaning | What Assay does |
 | --- | --- | --- |
-| `E_NEEDS_SUBTOOL` | The data was valid and unfamiliar: a category with no profile, a field or fact nobody declared, a value outside a declared set, or a case no row covers. | Pauses that item in `needs_subtool` and carries on. |
-| `E_PARSE` | The data was broken: not JSON, a repeated key, a missing or mistyped field, a number out of range. | Refuses that item and reports the error to Muster. |
-| `E_TIMEOUT` | Muster did not answer in time, or is not serving. | Keeps the finished outcome in the spool and retries, waiting longer each time (1 s doubling to 60 s). |
+| `E_NEEDS_SUBTOOL` | The data was valid and unfamiliar: an observation with no category or a category with no profile, a field or fact nobody declared, a value outside a declared set, or a case no row covers. | Pauses that item with the `needs_subtool` call and carries on. Muster replays it when a new build of Assay is deployed. |
+| `E_PARSE` | The data was broken: not JSON, a repeated key, a missing or mistyped field, a number out of range, a lease for something that is not an observed item. | Reports it with the `fail` call. Muster holds the item until the owner releases it. |
+| `E_TIMEOUT` | Muster did not answer in time, or is not serving. | Keeps the finished report in the spool and retries, waiting longer each time (1 s doubling to 60 s). |
 
 When data is both broken and unfamiliar, `E_PARSE` wins. An error carries a code, a fixed reason word, sometimes the name of a rule or declared fact, and a fingerprint for deduplication. It never repeats text from the input, so it cannot name a machine, an address or a credential.
 
@@ -141,35 +159,40 @@ When data is both broken and unfamiliar, `E_PARSE` wins. An error carries a code
 | [`PROMPT.md`](PROMPT.md) | The prompt this was built from. |
 | [`component.json`](component.json) | This component’s entry in the ClearedStack naming registry. |
 | [`cmd/assay/`](cmd/assay) | The command: `eval`, `rank`, `run`, `version`. |
-| [`internal/contract/`](internal/contract) | The v1 record that comes in and the outcome that goes out. Strict parsing. |
+| [`internal/contract/`](internal/contract) | The lease reply that comes in and the outcome that goes out. Strict parsing. |
 | [`internal/engine/`](internal/engine) | Gates, rubric, recommendation, split/merge flag, tie-breakers, and the ordering. |
 | [`internal/errs/`](internal/errs) | The three public error codes. |
-| [`internal/muster/`](internal/muster) | The small interface to Muster, an in-memory stand-in, and the HTTP client. |
-| [`internal/spool/`](internal/spool) | The on-disk buffer for outcomes Muster could not take. |
+| [`internal/muster/`](internal/muster) | The five calls to Muster: a small interface, the HTTP client, and an in-memory stand-in that can also be served over HTTP as a fake Muster. |
+| [`internal/spool/`](internal/spool) | The on-disk buffer for reports Muster could not take. |
 | [`internal/worker/`](internal/worker) | The polling loop. |
 | [`internal/report/`](internal/report) | The plain-text report `eval` prints. |
 | [`tools/`](tools) | The sub-tool registry and `rubric-profiles`: the rules and their fixtures. |
 | [`deploy/`](deploy), [`.ko.yaml`](.ko.yaml) | Kubernetes objects and the `ko` build settings. |
-| [`third_party/`](third_party) | The licence and notice of the one dependency, a YAML parser. |
+| [`internal/yamlite/`](internal/yamlite) | A strict reader for the small part of YAML the rule files use. |
+| [`testdata/contract/`](testdata/contract) | Muster's saved contract examples, copied unchanged, and replayed by `contract_test.go`. |
+| [`third_party/`](third_party) | Left over: the licence files of a YAML library that is no longer used. They can be removed. |
 | [`brand/`](brand) | The Assay logo and mark, for light and dark backgrounds. |
 
 ## What has been checked
 
-- **Saved examples:** 111 fixture pairs, covering every row of every decision table, plus text goldens for the command.
-- **Memory:** a test builds the binary as `ko` does, pushes 6,001 records through it over HTTP and reads peak memory from the kernel. It measured about 17 MiB against the 30 MiB budget.
+- **Saved examples:** 130 fixture pairs, covering every row of every decision table, plus text goldens for the command.
+- **Muster's contract:** all 52 of Muster's own example files are replayed. Where Assay can make the request, what it sends matches the example to the byte; every answer and every refusal is acted on as the contract says. The same examples are replayed against Assay's stand-in for Muster, so the thing Assay is tested against cannot drift from the contract.
+- **Standard library only:** `go.mod` requires nothing, and a test fails if any Go file imports a package from outside the standard library and this module.
+- **Memory:** a test builds the binary as `ko` does, pushes 6,001 leases through it over HTTP and reads peak memory from the kernel. It measured about 18 MiB against the 30 MiB budget.
 - **Read-only filesystem:** the same test confirms the process writes only inside its spool folder.
 - **No AI, no outside calls in the rules:** a test reads the imports of every package that decides an outcome and fails if one reaches the network, a clock, randomness or the environment.
-- **Errors leak nothing:** tests plant host names, addresses and passwords in records and in hub failures and check that none comes back in an error or a log line.
+- **Errors leak nothing:** tests plant host names, addresses and passwords in leases and in hub failures and check that none comes back in an error or a log line.
 - **Pod hardening:** tests read `deploy/assay.yaml` and check each clause of the specification's hardening rule.
 - **Image build:** `ko build` produced an image from source (about 3.7 MB, running as user 65532) with the same digest on repeated builds. It was not pushed anywhere.
 
 ## Not yet done
 
-- **No real Muster.** Muster does not exist yet. Assay has only run against the stand-in in `internal/muster`. The record shape, the outcome shape and the HTTP calls are this repository's proposal (see "Proposed changes" in `SPEC.md`) and must be agreed with Muster and Sextant.
+- **Sextant and Assay do not yet agree on an observation.** Assay scores `results.sextant` when it holds a `category` and a flat map of `facts` (see "Proposed changes" in `SPEC.md`). Sextant's first build writes a different shape, with no category. Until the two agree, every real item reaches Assay as "valid and unfamiliar" and is paused with `needs_subtool`. Nothing is scored wrongly, but nothing is scored. This is the next thing to settle.
+- **No running Muster yet.** Assay follows Muster's contract v1 and replays its examples, but has only ever talked to its own stand-in.
 - **The thresholds are placeholders.** `SPEC.md` fixes the gates, the weights and the recommendation bands, and those are implemented exactly. It does not say what earns a 3 rather than a 4 on any factor. The thresholds and verb lists in the five profiles are made up so the engine has something to run. They need a decision by the project owner before any score is published.
 - **Three deployment values are unknown** and marked provisional in `deploy/assay.yaml`: Muster's address and port, the labels on Muster's pods, and the name of the "Standard (Workers)" priority class (left out).
 - **Never deployed.** Signing with `cosign`, storing in Lazarette and applying with Shipkeeper are done by other components and have not been tried.
-- **Reporting and publishing are indirect.** Assay hands every outcome and error to Muster. Opening a Bellbuoy task and exposing results through the `pub.*` views are left to those components, because the network policy lets Assay reach only Muster.
+- **Reporting and publishing are indirect.** Assay reports to Muster only. Muster gives Bellbuoy an incident step for each failed or paused item, and exposes results through the `pub.*` views. The reason and fingerprint of an error do not travel in Muster's calls; they are in Assay's log.
 - **No liveness or readiness probe.** The specification describes none, and the network policy admits no inbound connection.
 
 ## At a glance

@@ -51,6 +51,8 @@ func TestParseLeaseAcceptsWhatMusterMaySend(t *testing.T) {
 		"an offset":                with(`09:01:00Z`, `09:01:00+00:00`),
 		"results of other workers": with(`"trawl":{"source":"made-up source"}`, `"trawl":{"a":{"b":{"c":[[1,2.5,null,{"d":"deep"}]]}}},"countersign":{"decision":"override"}`),
 		"no results but Sextant's": with(`,"trawl":{"source":"made-up source"}`, ``),
+		"what was found":           with(`"results"`, `"found":{"source":"web-sweep","title":"A made-up title","address":"https://example.invalid/x"},"results"`),
+		"a lease with a colon":     with(`"PA-0007.3"`, `"release:PA-0007.3"`),
 	}
 	for name, input := range cases {
 		if _, perr := ParseLease([]byte(input)); perr != nil {
@@ -90,6 +92,7 @@ func TestParseLeaseRefusals(t *testing.T) {
 		{"lease with a slash", with(`"PA-0007.3"`, `"PA-0007/3"`), errs.Parse, errs.InvalidValue, "lease", ""},
 		{"empty lease", with(`"PA-0007.3"`, `""`), errs.Parse, errs.InvalidValue, "lease", ""},
 
+		{"found as text", with(`"results"`, `"found":"a page","results"`), errs.Parse, errs.InvalidType, "found", "PA-0007.3"},
 		{"no id", with(`"id":"PA-0007",`, ``), errs.Parse, errs.MissingField, "id", "PA-0007.3"},
 		{"numeric id", with(`"id":"PA-0007"`, `"id":7`), errs.Parse, errs.InvalidType, "id", "PA-0007.3"},
 		{"three-digit id", with(`"id":"PA-0007"`, `"id":"PA-007"`), errs.Parse, errs.InvalidValue, "id", "PA-0007.3"},
