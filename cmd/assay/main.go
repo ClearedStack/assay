@@ -17,6 +17,7 @@ import (
 	"os/signal"
 	"sort"
 	"syscall"
+	"text/tabwriter"
 
 	"github.com/ClearedStack/assay/internal/contract"
 	"github.com/ClearedStack/assay/internal/engine"
@@ -167,7 +168,8 @@ func cmdRank(args []string, stdout, stderr io.Writer) int {
 	sort.SliceStable(scored, func(i, j int) bool { return engine.Compare(scored[i], scored[j]) < 0 })
 	sort.SliceStable(others, func(i, j int) bool { return others[i].ItemID < others[j].ItemID })
 
-	fmt.Fprintf(stdout, "%-5s%-28s%-7s%-8s%s\n", "Rank", "Item", "Total", "Rec.", "Tie-breakers")
+	tw := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, "Rank\tItem\tTotal\tRecommendation\tTie-breakers")
 	for i, o := range scored {
 		ties := ""
 		for j, t := range o.TieBreakers {
@@ -176,20 +178,20 @@ func cmdRank(args []string, stdout, stderr io.Writer) int {
 			}
 			ties += fmt.Sprint(t.Value)
 		}
-		fmt.Fprintf(stdout, "%-5d%-28s%-7d%-8s%s\n", i+1, o.ItemID, *o.Total, o.Recommendation, ties)
+		fmt.Fprintf(tw, "%d\t%s\t%d\t%s\t%s\n", i+1, o.ItemID, *o.Total, o.Recommendation, ties)
 	}
-	if len(others) > 0 {
-		fmt.Fprintln(stdout, "\nNot ranked")
-		for _, o := range others {
-			id, state := o.ItemID, o.State
-			if id == "" {
-				id = "(unreadable)"
-			}
-			if state == "" {
-				state = string(o.Error.Code)
-			}
-			fmt.Fprintf(stdout, "     %-28s%s\n", id, state)
+	for _, o := range others {
+		id, state := o.ItemID, o.State
+		if id == "" {
+			id = "(unreadable)"
 		}
+		if state == "" {
+			state = string(o.Error.Code)
+		}
+		fmt.Fprintf(tw, "-\t%s\t-\t%s\n", id, state)
+	}
+	if err := tw.Flush(); err != nil {
+		return exitFailure
 	}
 	return exitOK
 }

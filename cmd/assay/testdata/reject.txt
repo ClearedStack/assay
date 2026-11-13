@@ -1,0 +1,31 @@
+Item:     pricing-reject
+Category: pricing
+Rules:    rubric v1, profile pricing v1
+State:    scored
+
+Knockout gates
+  PASS  Public source           The rules come from officially released public material.
+  PASS  Runs in the browser     It runs entirely client-side.
+  PASS  Private by design       It works offline, with no account, no tracking and connect-src 'self'.
+  PASS  One job                 It does one job, stated in one verb-first sentence.
+  PASS  Arithmetic, not advice  It computes numbers, structures data or looks up citations.
+
+Rubric
+  Need for small businesses     2 x 4 =   8
+  Gap                           2 x 4 =   8
+  Strength of public source     2 x 3 =   6
+  Fits in a browser             2 x 3 =   6
+  Small enough to read          2 x 2 =   4
+  Can be checked                2 x 2 =   4
+  Low upkeep of reference data  2 x 2 =   4
+  Total                                  40 / 100
+
+Recommendation: Reject
+Split/merge review: no
+
+Tie-breakers (higher sorts first)
+  1. Roadmap phase fit       2
+  2. Gap severity            2
+  3. Low upkeep              2
+  4. Small code footprint    2
+  5. Community demand        14

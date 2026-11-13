@@ -1,0 +1,8 @@
+Rank  Item                           Total  Recommendation  Tie-breakers
+1     proposal-build-split-merge     90     Build           2 5 4 2 14
+2     market-build                   86     Build           2 4 4 4 14
+3     pricing-build                  86     Build           2 4 4 4 14
+4     pricing-build-split-merge      82     Build           2 5 3 2 14
+5     pricing-park                   60     Park            2 3 3 3 14
+-     (unreadable)                   -      E_PARSE
+-     pricing-screened-out-one-gate  -      screened-out

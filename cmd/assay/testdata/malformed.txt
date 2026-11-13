@@ -1,0 +1,7 @@
+State:    (none: the record could not be read)
+
+Error
+  Code:        E_PARSE
+  Reason:      malformed_json
+  Where:       record
+  Fingerprint: b8cd3a9ad3431ba0

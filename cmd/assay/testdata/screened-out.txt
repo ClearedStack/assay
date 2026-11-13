@@ -1,0 +1,11 @@
+Item:     pricing-screened-out-all-gates
+Category: pricing
+Rules:    rubric v1, profile pricing v1
+State:    screened-out
+
+Knockout gates
+  FAIL  Public source           The governing source is not a statute, a regulation or an official government publication.
+  FAIL  Runs in the browser     It needs a backend server.
+  FAIL  Private by design       It does not work offline.
+  FAIL  One job                 It does more than one job.
+  FAIL  Arithmetic, not advice  It renders advice or a legal conclusion.
