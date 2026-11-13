@@ -78,10 +78,10 @@ func (h *HTTP) Lease(ctx context.Context, lane Lane) (*Lease, error) {
 	if perr != nil {
 		return nil, perr
 	}
-	switch {
-	case status == http.StatusNoContent:
+	switch status {
+	case http.StatusNoContent:
 		return nil, nil
-	case status == http.StatusOK:
+	case http.StatusOK:
 		// The body is the record itself, untouched, and the lease is named
 		// in a header. A record that is not even JSON still arrives whole,
 		// so Assay can refuse it against the right lease.
@@ -135,7 +135,7 @@ func (h *HTTP) post(ctx context.Context, path string, body []byte) (int, string,
 		// err names the hub's address. It is dropped here, on purpose.
 		return 0, "", nil, timeoutError()
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	reply, err := io.ReadAll(io.LimitReader(resp.Body, maxReplyBytes+1))
 	if err != nil {
 		return 0, "", nil, timeoutError()

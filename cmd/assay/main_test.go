@@ -208,7 +208,7 @@ func TestUsageAndVersion(t *testing.T) {
 	if code, out, _ := runCLI(t, "", noEnv, "help"); code != exitOK || !strings.Contains(out, "assay eval") {
 		t.Errorf("help: exit %d", code)
 	}
-	for _, args := range [][]string{{}, {"score"}, {"eval"}, {"eval", "a", "b"}, {"eval", "-format", "xml", "a"}, {"rank"}, {"run", "extra"}, {"eval", "-nope"}} {
+	for _, args := range [][]string{{}, {"score"}, {"eval"}, {"eval", "a", "b"}, {"eval", "-format", "xml", "a"}, {"rank"}, {"rank", "-"}, {"run", "extra"}, {"eval", "-nope"}} {
 		if code, _, _ := runCLI(t, "", noEnv, args...); code != exitUsage {
 			t.Errorf("%v: exit %d, want %d", args, code, exitUsage)
 		}

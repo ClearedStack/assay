@@ -198,8 +198,10 @@ func TestLeaseTimeoutBacksOffAndLosesNothing(t *testing.T) {
 	r := newRig(t)
 	r.hub.Add(muster.Urgent, fixture(t, "pricing/fixtures/build.input.json"))
 	r.hub.FailLease(2, timeout())
-	if r.w.Step(ctx) != Retry || r.w.Step(ctx) != Retry {
-		t.Fatal("a failed lease should ask for a retry")
+	for i := 0; i < 2; i++ {
+		if r.w.Step(ctx) != Retry {
+			t.Fatal("a failed lease should ask for a retry")
+		}
 	}
 	if r.w.Step(ctx) != Worked {
 		t.Fatal("the record should be leased once the hub answers")

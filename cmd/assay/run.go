@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -37,7 +36,7 @@ func cmdRun(ctx context.Context, args []string, stdout, stderr io.Writer, getenv
 		return exitUsage
 	}
 	if fs.NArg() != 0 {
-		fmt.Fprint(stderr, usage)
+		say(stderr, usage)
 		return exitUsage
 	}
 	eng := newEngine(stderr)
@@ -51,11 +50,11 @@ func cmdRun(ctx context.Context, args []string, stdout, stderr io.Writer, getenv
 	// CONTRACT_VERSION is how the platform says which contract it expects.
 	// This build speaks one version and refuses to start under another.
 	if v := getenv("CONTRACT_VERSION"); v != "" && v != contract.Version {
-		fmt.Fprintln(stderr, "assay: CONTRACT_VERSION is not", contract.Version)
+		say(stderr, "assay: CONTRACT_VERSION is not", contract.Version)
 		return exitFailure
 	}
 	if getenv("MUSTER_URL") == "" {
-		fmt.Fprintln(stderr, "assay: MUSTER_URL is not set")
+		say(stderr, "assay: MUSTER_URL is not set")
 		return exitFailure
 	}
 	tokenFile := defaultTokenFile
@@ -64,7 +63,7 @@ func cmdRun(ctx context.Context, args []string, stdout, stderr io.Writer, getenv
 	}
 	hub, err := muster.NewHTTP(getenv("MUSTER_URL"), tokenFile)
 	if err != nil {
-		fmt.Fprintln(stderr, "assay: MUSTER_URL:", err)
+		say(stderr, "assay: MUSTER_URL:", err)
 		return exitFailure
 	}
 	spoolDir := getenv("ASSAY_SPOOL_DIR")
@@ -73,13 +72,13 @@ func cmdRun(ctx context.Context, args []string, stdout, stderr io.Writer, getenv
 	}
 	sp, err := spool.Open(spoolDir)
 	if err != nil {
-		fmt.Fprintln(stderr, "assay:", err)
+		say(stderr, "assay:", err)
 		return exitFailure
 	}
 	poll, ok1 := duration(getenv("ASSAY_POLL_INTERVAL"), defaultPollInterval)
 	timeout, ok2 := duration(getenv("ASSAY_HUB_TIMEOUT"), defaultHubTimeout)
 	if !ok1 || !ok2 {
-		fmt.Fprintln(stderr, "assay: ASSAY_POLL_INTERVAL and ASSAY_HUB_TIMEOUT must be durations such as 5s")
+		say(stderr, "assay: ASSAY_POLL_INTERVAL and ASSAY_HUB_TIMEOUT must be durations such as 5s")
 		return exitFailure
 	}
 
@@ -133,16 +132,16 @@ func runStandin(ctx context.Context, dir string, eng *engine.Engine, stdout, std
 	}
 	for _, lane := range muster.Lanes {
 		if err := load(lane, filepath.Join(dir, string(lane), "*.json")); err != nil {
-			fmt.Fprintln(stderr, "assay: a record could not be read")
+			say(stderr, "assay: a record could not be read")
 			return exitFailure
 		}
 	}
 	if err := load(muster.Normal, filepath.Join(dir, "*.json")); err != nil {
-		fmt.Fprintln(stderr, "assay: a record could not be read")
+		say(stderr, "assay: a record could not be read")
 		return exitFailure
 	}
 	if total == 0 {
-		fmt.Fprintln(stderr, "assay: no records found")
+		say(stderr, "assay: no records found")
 		return exitFailure
 	}
 

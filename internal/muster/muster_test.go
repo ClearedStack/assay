@@ -283,7 +283,7 @@ func TestHTTPErrorsNameNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 	dead := "http://" + ln.Addr().String()
-	ln.Close()
+	_ = ln.Close()
 
 	token := "made-up-token-8842"
 	for name, base := range map[string]string{"slow hub": slow.URL, "nothing listening": dead} {
@@ -335,7 +335,7 @@ func TestHandlerRefusesWhatIsNotTheContract(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return resp.StatusCode
 	}
 	if got := do("POST", "/v1/leases", "Bearer made-up-token", "v1"); got != http.StatusNoContent {

@@ -47,8 +47,7 @@ Usage:
   assay run -standin DIR                run the worker over the records in DIR, with no Muster
   assay version                         print the version
 
-Exit codes for eval: 0 scored or screened-out, 3 E_NEEDS_SUBTOOL, 4 E_PARSE.
-`
+Exit codes for eval: 0 scored or screened-out, 3 E_NEEDS_SUBTOOL, 4 E_PARSE.`
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -59,7 +58,7 @@ func main() {
 
 func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(string) string) int {
 	if len(args) == 0 {
-		fmt.Fprint(stderr, usage)
+		say(stderr, usage)
 		return exitUsage
 	}
 	switch args[0] {
@@ -70,34 +69,40 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	case "run":
 		return cmdRun(ctx, args[1:], stdout, stderr, getenv)
 	case "version":
-		fmt.Fprintln(stdout, contract.Worker, version)
+		say(stdout, contract.Worker, version)
 		return exitOK
 	case "help", "-h", "-help", "--help":
-		fmt.Fprint(stdout, usage)
+		say(stdout, usage)
 		return exitOK
 	}
-	fmt.Fprint(stderr, usage)
+	say(stderr, usage)
 	return exitUsage
 }
+
+// say and sayf write for a person at a terminal. If the terminal has gone
+// away there is nobody left to tell, so a failed write is let go.
+func say(w io.Writer, a ...any) { _, _ = fmt.Fprintln(w, a...) }
+
+func sayf(w io.Writer, format string, a ...any) { _, _ = fmt.Fprintf(w, format, a...) }
 
 func newEngine(stderr io.Writer) *engine.Engine {
 	set, err := tools.LoadEmbedded()
 	if err != nil {
 		// The rules are compiled in and tested, so this means a bad build.
-		fmt.Fprintln(stderr, "assay: the built-in rules did not load:", err)
+		say(stderr, "assay: the built-in rules did not load:", err)
 		return nil
 	}
 	return engine.New(set)
 }
 
 func readRecord(path string, stdin io.Reader) ([]byte, error) {
-	var r io.Reader = stdin
+	r := stdin
 	if path != "-" {
 		f, err := os.Open(path)
 		if err != nil {
 			return nil, err
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		r = f
 	}
 	// One byte over the limit is enough for the parser to refuse it.
@@ -112,7 +117,7 @@ func cmdEval(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return exitUsage
 	}
 	if fs.NArg() != 1 || (*format != "text" && *format != "json") {
-		fmt.Fprint(stderr, usage)
+		say(stderr, usage)
 		return exitUsage
 	}
 	eng := newEngine(stderr)
@@ -121,7 +126,7 @@ func cmdEval(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 	raw, err := readRecord(fs.Arg(0), stdin)
 	if err != nil {
-		fmt.Fprintln(stderr, "assay: the record could not be read")
+		say(stderr, "assay: the record could not be read")
 		return exitFailure
 	}
 	out := eng.Evaluate(raw)
@@ -144,7 +149,7 @@ func cmdEval(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 func cmdRank(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprint(stderr, usage)
+		say(stderr, usage)
 		return exitUsage
 	}
 	eng := newEngine(stderr)
@@ -153,9 +158,13 @@ func cmdRank(args []string, stdout, stderr io.Writer) int {
 	}
 	var scored, others []*contract.Outcome
 	for _, path := range args {
+		if path == "-" {
+			say(stderr, "assay: rank reads files, not standard input")
+			return exitUsage
+		}
 		raw, err := readRecord(path, nil)
-		if path == "-" || err != nil {
-			fmt.Fprintln(stderr, "assay: a record could not be read")
+		if err != nil {
+			say(stderr, "assay: a record could not be read")
 			return exitFailure
 		}
 		out := eng.Evaluate(raw)
@@ -169,7 +178,7 @@ func cmdRank(args []string, stdout, stderr io.Writer) int {
 	sort.SliceStable(others, func(i, j int) bool { return others[i].ItemID < others[j].ItemID })
 
 	tw := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "Rank\tItem\tTotal\tRecommendation\tTie-breakers")
+	say(tw, "Rank\tItem\tTotal\tRecommendation\tTie-breakers")
 	for i, o := range scored {
 		ties := ""
 		for j, t := range o.TieBreakers {
@@ -178,7 +187,7 @@ func cmdRank(args []string, stdout, stderr io.Writer) int {
 			}
 			ties += fmt.Sprint(t.Value)
 		}
-		fmt.Fprintf(tw, "%d\t%s\t%d\t%s\t%s\n", i+1, o.ItemID, *o.Total, o.Recommendation, ties)
+		sayf(tw, "%d\t%s\t%d\t%s\t%s\n", i+1, o.ItemID, *o.Total, o.Recommendation, ties)
 	}
 	for _, o := range others {
 		id, state := o.ItemID, o.State
@@ -188,7 +197,7 @@ func cmdRank(args []string, stdout, stderr io.Writer) int {
 		if state == "" {
 			state = string(o.Error.Code)
 		}
-		fmt.Fprintf(tw, "-\t%s\t-\t%s\n", id, state)
+		sayf(tw, "-\t%s\t-\t%s\n", id, state)
 	}
 	if err := tw.Flush(); err != nil {
 		return exitFailure
