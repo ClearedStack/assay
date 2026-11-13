@@ -1,0 +1,32 @@
+{
+  "contract_version": "v1",
+  "item_id": "pricing-link",
+  "state": "observed",
+  "category": "pricing",
+  "facts": {
+    "source_kind": "statute",
+    "source_public": true,
+    "source_precision": "lookup_table",
+    "client_runtime": "browser_js",
+    "needs_backend": false,
+    "needs_remote_api": false,
+    "largest_input_kb": 500,
+    "works_offline": true,
+    "needs_account": false,
+    "emits_tracking": false,
+    "connect_src_self": true,
+    "task_count": 1,
+    "task_sentence": "Compute a loaded hourly rate from made-up cost pools.",
+    "output_kinds": [
+      "computed_number"
+    ],
+    "need_signals": 45,
+    "best_alternative": "complete",
+    "est_source_lines": 300,
+    "worked_examples": 12,
+    "reference_updates_per_year": 0,
+    "roadmap_phase_fit": 2,
+    "community_demand": 14,
+    "rate_tables": 2
+  }
+}

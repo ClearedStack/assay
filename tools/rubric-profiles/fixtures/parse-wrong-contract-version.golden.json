@@ -1,0 +1,11 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "match-parse-wrong-contract-version",
+  "error": {
+    "code": "E_PARSE",
+    "reason": "unsupported_contract",
+    "where": "contract_version",
+    "fingerprint": "c2413de5ab3ce7df"
+  }
+}

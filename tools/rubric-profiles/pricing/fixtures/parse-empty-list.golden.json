@@ -1,0 +1,17 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "pricing-parse-empty-list",
+  "category": "pricing",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "pricing",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_PARSE",
+    "reason": "invalid_value",
+    "where": "output_kinds",
+    "fingerprint": "9cd4c4904ff210ce"
+  }
+}

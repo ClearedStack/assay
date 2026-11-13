@@ -1,0 +1,18 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "pricing-needs-subtool-unknown-fact",
+  "state": "needs_subtool",
+  "category": "pricing",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "pricing",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_NEEDS_SUBTOOL",
+    "reason": "unknown_fact",
+    "where": "facts",
+    "fingerprint": "e829209dafda190e"
+  }
+}

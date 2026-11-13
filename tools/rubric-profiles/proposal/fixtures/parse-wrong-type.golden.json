@@ -1,0 +1,17 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "proposal-parse-wrong-type",
+  "category": "proposal",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "proposal",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_PARSE",
+    "reason": "invalid_type",
+    "where": "task_count",
+    "fingerprint": "d8dfd419e2131421"
+  }
+}

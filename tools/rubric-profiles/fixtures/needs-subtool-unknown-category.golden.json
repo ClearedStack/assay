@@ -1,0 +1,13 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "match-needs-subtool-unknown-category",
+  "state": "needs_subtool",
+  "category": "logistics",
+  "error": {
+    "code": "E_NEEDS_SUBTOOL",
+    "reason": "unknown_category",
+    "where": "category",
+    "fingerprint": "418bfaa51b56876b"
+  }
+}

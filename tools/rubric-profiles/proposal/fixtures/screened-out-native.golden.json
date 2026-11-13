@@ -1,0 +1,49 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "proposal-screened-out-native",
+  "state": "screened-out",
+  "category": "proposal",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "proposal",
+    "profile_version": 1
+  },
+  "gates": [
+    {
+      "id": "public_source",
+      "name": "Public source",
+      "pass": true,
+      "rule": 3,
+      "reason": "The rules come from officially released public material."
+    },
+    {
+      "id": "runs_in_browser",
+      "name": "Runs in the browser",
+      "pass": false,
+      "rule": 3,
+      "reason": "It does not run in the browser."
+    },
+    {
+      "id": "private_by_design",
+      "name": "Private by design",
+      "pass": false,
+      "rule": 3,
+      "reason": "It emits tracking."
+    },
+    {
+      "id": "one_job",
+      "name": "One job",
+      "pass": true,
+      "rule": 2,
+      "reason": "It does one job, stated in one verb-first sentence."
+    },
+    {
+      "id": "arithmetic_not_advice",
+      "name": "Arithmetic, not advice",
+      "pass": true,
+      "rule": 2,
+      "reason": "It computes numbers, structures data or looks up citations."
+    }
+  ]
+}

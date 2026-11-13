@@ -1,0 +1,32 @@
+{
+  "contract_version": "v1",
+  "item_id": "market-reject-floor",
+  "state": "observed",
+  "category": "market",
+  "facts": {
+    "source_kind": "far",
+    "source_public": true,
+    "source_precision": "general_principle",
+    "client_runtime": "browser_js",
+    "needs_backend": false,
+    "needs_remote_api": false,
+    "largest_input_kb": 9000,
+    "works_offline": true,
+    "needs_account": false,
+    "emits_tracking": false,
+    "connect_src_self": true,
+    "task_count": 1,
+    "task_sentence": "Look up the size threshold for a made-up industry code.",
+    "output_kinds": [
+      "computed_number"
+    ],
+    "need_signals": 0,
+    "best_alternative": "complete",
+    "est_source_lines": 6000,
+    "worked_examples": 0,
+    "reference_updates_per_year": 20,
+    "roadmap_phase_fit": 0,
+    "community_demand": 0,
+    "bundled_rows_k": 20
+  }
+}

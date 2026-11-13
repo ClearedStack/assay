@@ -1,0 +1,10 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "error": {
+    "code": "E_PARSE",
+    "reason": "malformed_json",
+    "where": "record",
+    "fingerprint": "b8cd3a9ad3431ba0"
+  }
+}

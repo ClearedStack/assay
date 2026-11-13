@@ -1,0 +1,17 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "pricing-parse-wrong-type",
+  "category": "pricing",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "pricing",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_PARSE",
+    "reason": "invalid_type",
+    "where": "task_count",
+    "fingerprint": "eed9d44b118dc3f0"
+  }
+}

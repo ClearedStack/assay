@@ -1,0 +1,18 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "devsecops-needs-subtool-unlisted-verb",
+  "state": "needs_subtool",
+  "category": "devsecops",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "devsecops",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_NEEDS_SUBTOOL",
+    "reason": "no_matching_rule",
+    "where": "one_job",
+    "fingerprint": "6ff5bfc4979009bf"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "pricing-needs-subtool-unknown-value",
+  "state": "needs_subtool",
+  "category": "pricing",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "pricing",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_NEEDS_SUBTOOL",
+    "reason": "unknown_value",
+    "where": "source_kind",
+    "fingerprint": "ee7ec3c33e5b0b57"
+  }
+}

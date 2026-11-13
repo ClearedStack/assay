@@ -1,0 +1,17 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "devsecops-parse-wrong-type",
+  "category": "devsecops",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "devsecops",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_PARSE",
+    "reason": "invalid_type",
+    "where": "task_count",
+    "fingerprint": "a39bd8f7d4af7cc3"
+  }
+}

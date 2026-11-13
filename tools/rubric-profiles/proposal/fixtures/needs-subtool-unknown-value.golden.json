@@ -1,0 +1,18 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "proposal-needs-subtool-unknown-value",
+  "state": "needs_subtool",
+  "category": "proposal",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "proposal",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_NEEDS_SUBTOOL",
+    "reason": "unknown_value",
+    "where": "source_kind",
+    "fingerprint": "85722b9a2f6b1b4e"
+  }
+}

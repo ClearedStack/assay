@@ -1,0 +1,17 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "pricing-parse-out-of-range",
+  "category": "pricing",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "pricing",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_PARSE",
+    "reason": "out_of_range",
+    "where": "roadmap_phase_fit",
+    "fingerprint": "52f4cfaa480d0f1c"
+  }
+}

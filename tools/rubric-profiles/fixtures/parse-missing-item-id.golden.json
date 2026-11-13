@@ -1,0 +1,10 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "error": {
+    "code": "E_PARSE",
+    "reason": "missing_field",
+    "where": "item_id",
+    "fingerprint": "a93cd2ac2004c49a"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "market-parse-missing-fact",
+  "category": "market",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "market",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_PARSE",
+    "reason": "missing_fact",
+    "where": "worked_examples",
+    "fingerprint": "730cedc6a4a2b3c8"
+  }
+}

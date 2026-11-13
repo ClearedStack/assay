@@ -1,0 +1,12 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "match-parse-nested-fact",
+  "category": "pricing",
+  "error": {
+    "code": "E_PARSE",
+    "reason": "invalid_type",
+    "where": "facts",
+    "fingerprint": "48b0c10af6684698"
+  }
+}

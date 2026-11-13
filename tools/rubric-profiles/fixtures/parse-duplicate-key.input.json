@@ -1,0 +1,8 @@
+{
+  "contract_version": "v1",
+  "item_id": "match-parse-duplicate-key",
+  "item_id": "match-parse-duplicate-key-2",
+  "state": "observed",
+  "category": "pricing",
+  "facts": {}
+}

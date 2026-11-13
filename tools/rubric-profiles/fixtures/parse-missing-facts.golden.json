@@ -1,0 +1,12 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "match-parse-missing-facts",
+  "category": "pricing",
+  "error": {
+    "code": "E_PARSE",
+    "reason": "missing_field",
+    "where": "facts",
+    "fingerprint": "79b352c8a77b37ab"
+  }
+}

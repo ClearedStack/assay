@@ -1,0 +1,18 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "cyber-needs-subtool-unknown-fact",
+  "state": "needs_subtool",
+  "category": "cyber",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "cyber",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_NEEDS_SUBTOOL",
+    "reason": "unknown_fact",
+    "where": "facts",
+    "fingerprint": "47222fdcdfbcd6ff"
+  }
+}

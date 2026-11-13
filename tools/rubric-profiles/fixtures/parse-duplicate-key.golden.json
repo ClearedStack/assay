@@ -1,0 +1,10 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "error": {
+    "code": "E_PARSE",
+    "reason": "duplicate_key",
+    "where": "record",
+    "fingerprint": "2791172b8354c096"
+  }
+}

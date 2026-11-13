@@ -1,0 +1,49 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "pricing-screened-out-one-gate",
+  "state": "screened-out",
+  "category": "pricing",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "pricing",
+    "profile_version": 1
+  },
+  "gates": [
+    {
+      "id": "public_source",
+      "name": "Public source",
+      "pass": false,
+      "rule": 1,
+      "reason": "The governing source is not officially released to the public."
+    },
+    {
+      "id": "runs_in_browser",
+      "name": "Runs in the browser",
+      "pass": true,
+      "rule": 4,
+      "reason": "It runs entirely client-side."
+    },
+    {
+      "id": "private_by_design",
+      "name": "Private by design",
+      "pass": true,
+      "rule": 5,
+      "reason": "It works offline, with no account, no tracking and connect-src 'self'."
+    },
+    {
+      "id": "one_job",
+      "name": "One job",
+      "pass": true,
+      "rule": 2,
+      "reason": "It does one job, stated in one verb-first sentence."
+    },
+    {
+      "id": "arithmetic_not_advice",
+      "name": "Arithmetic, not advice",
+      "pass": true,
+      "rule": 2,
+      "reason": "It computes numbers, structures data or looks up citations."
+    }
+  ]
+}

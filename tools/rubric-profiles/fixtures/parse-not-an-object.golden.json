@@ -1,0 +1,10 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "error": {
+    "code": "E_PARSE",
+    "reason": "not_an_object",
+    "where": "record",
+    "fingerprint": "f78f09ee7dcb54f2"
+  }
+}

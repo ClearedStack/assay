@@ -1,0 +1,18 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "market-needs-subtool-unknown-fact",
+  "state": "needs_subtool",
+  "category": "market",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "market",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_NEEDS_SUBTOOL",
+    "reason": "unknown_fact",
+    "where": "facts",
+    "fingerprint": "a41c0624ba57f73b"
+  }
+}

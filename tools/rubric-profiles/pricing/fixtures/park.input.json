@@ -1,0 +1,32 @@
+{
+  "contract_version": "v1",
+  "item_id": "pricing-park",
+  "state": "observed",
+  "category": "pricing",
+  "facts": {
+    "source_kind": "dfars",
+    "source_public": true,
+    "source_precision": "defined_procedure",
+    "client_runtime": "browser_js",
+    "needs_backend": false,
+    "needs_remote_api": false,
+    "largest_input_kb": 5000,
+    "works_offline": true,
+    "needs_account": false,
+    "emits_tracking": false,
+    "connect_src_self": true,
+    "task_count": 1,
+    "task_sentence": "Compute a loaded hourly rate from made-up cost pools.",
+    "output_kinds": [
+      "computed_number"
+    ],
+    "need_signals": 12,
+    "best_alternative": "outdated",
+    "est_source_lines": 1500,
+    "worked_examples": 3,
+    "reference_updates_per_year": 1,
+    "roadmap_phase_fit": 2,
+    "community_demand": 14,
+    "rate_tables": 4
+  }
+}

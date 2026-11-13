@@ -1,0 +1,13 @@
+{
+  "contract_version": "v1",
+  "worker": "assay",
+  "item_id": "match-needs-subtool-unknown-field",
+  "state": "needs_subtool",
+  "category": "pricing",
+  "error": {
+    "code": "E_NEEDS_SUBTOOL",
+    "reason": "unknown_field",
+    "where": "record",
+    "fingerprint": "43051ce46f88ec08"
+  }
+}
