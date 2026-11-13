@@ -1,0 +1,43 @@
+{
+  "lease": "PA-4004.1",
+  "kind": "item",
+  "id": "PA-4004",
+  "state": "observed",
+  "lane": "normal",
+  "attempt": 1,
+  "expires": "2026-01-05T09:01:00Z",
+  "results": {
+    "sextant": {
+      "category": "pricing",
+      "facts": {
+        "source_kind": "agency_publication",
+        "source_public": true,
+        "source_precision": "defined_procedure",
+        "client_runtime": "browser_js",
+        "needs_backend": false,
+        "needs_remote_api": false,
+        "largest_input_kb": 50000,
+        "works_offline": true,
+        "needs_account": false,
+        "emits_tracking": false,
+        "connect_src_self": true,
+        "task_count": 1,
+        "task_sentence": "Compute a loaded hourly rate from made-up cost pools.",
+        "output_kinds": [
+          "computed_number"
+        ],
+        "need_signals": 5,
+        "best_alternative": "partial",
+        "est_source_lines": 3000,
+        "worked_examples": 1,
+        "reference_updates_per_year": 3,
+        "roadmap_phase_fit": 2,
+        "community_demand": 14,
+        "rate_tables": 5
+      }
+    },
+    "trawl": {
+      "source": "made-up source"
+    }
+  }
+}

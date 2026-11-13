@@ -1,0 +1,9 @@
+{
+  "lease": "PA-9020.1",
+  "kind": "item",
+  "id": "PA-9020",
+  "state": "observed",
+  "lane": "normal",
+  "attempt": 1,
+  "expires": "2026-01-05T09:01:00Z"
+}

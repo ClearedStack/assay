@@ -1,0 +1,18 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-5012",
+  "state": "needs_subtool",
+  "category": "proposal",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "proposal",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_NEEDS_SUBTOOL",
+    "reason": "unknown_fact",
+    "where": "facts",
+    "fingerprint": "c3b1b6c1d85b1f19"
+  }
+}

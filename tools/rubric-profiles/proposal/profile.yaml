@@ -1,0 +1,252 @@
+# Rubric profile for the "proposal" category: tools that count, check or lay
+# out the parts of a proposal against a published instruction.
+#
+# Each table is read top to bottom and the first row whose conditions all
+# hold decides. If no row matches, the item is paused with E_NEEDS_SUBTOOL.
+# There is no default row anywhere. All thresholds are made up for this
+# project.
+profile: proposal
+version: 1
+
+# Every fact a proposal record must carry. A record with a fact missing is
+# broken (E_PARSE); a record with a fact not listed here is unfamiliar
+# (E_NEEDS_SUBTOOL).
+facts:
+  # Where the rule comes from.
+  source_kind:
+    type: enum
+    values: [statute, far, dfars, nist_sp, agency_publication, vendor_document, paywalled_standard, unpublished]
+  source_public: {type: bool}
+  source_precision:
+    type: enum
+    values: [exact_formula, lookup_table, defined_procedure, general_principle]
+
+  # How it would run.
+  client_runtime:
+    type: enum
+    values: [browser_js, browser_wasm, desktop_native, server_side]
+  needs_backend: {type: bool}
+  needs_remote_api: {type: bool}
+  largest_input_kb: {type: int, min: 0, max: 10000000}
+
+  # What it would ask of the person using it.
+  works_offline: {type: bool}
+  needs_account: {type: bool}
+  emits_tracking: {type: bool}
+  connect_src_self: {type: bool}
+
+  # What it does.
+  task_count: {type: int, min: 1, max: 100}
+  task_sentence: {type: text, max_length: 200}
+  output_kinds:
+    type: list
+    values: [computed_number, structured_data, citation_lookup, legal_advice, compliance_determination]
+
+  # Evidence for the rubric.
+  need_signals: {type: int, min: 0, max: 100000}
+  best_alternative:
+    type: enum
+    values: [none, paid_only, outdated, partial, complete]
+  est_source_lines: {type: int, min: 1, max: 1000000}
+  worked_examples: {type: int, min: 0, max: 10000}
+  reference_updates_per_year: {type: int, min: 0, max: 1000}
+  # Proposal only: how many document templates the tool would have to carry.
+  template_count: {type: int, min: 0, max: 1000}
+
+  # Tie-breakers.
+  roadmap_phase_fit: {type: int, min: 0, max: 3}
+  community_demand: {type: int, min: 0, max: 100000}
+
+gates:
+  public_source:
+    - when: {source_public: {eq: false}}
+      pass: false
+      reason: "The governing source is not officially released to the public."
+    - when: {source_kind: {in: [vendor_document, paywalled_standard, unpublished]}}
+      pass: false
+      reason: "The governing source is not a statute, a regulation or an official government publication."
+    - when:
+        source_public: {eq: true}
+        source_kind: {in: [statute, far, dfars, nist_sp, agency_publication]}
+      pass: true
+      reason: "The rules come from officially released public material."
+
+  runs_in_browser:
+    - when: {needs_backend: {eq: true}}
+      pass: false
+      reason: "It needs a backend server."
+    - when: {needs_remote_api: {eq: true}}
+      pass: false
+      reason: "It needs a remote API."
+    - when: {client_runtime: {in: [desktop_native, server_side]}}
+      pass: false
+      reason: "It does not run in the browser."
+    - when:
+        needs_backend: {eq: false}
+        needs_remote_api: {eq: false}
+        client_runtime: {in: [browser_js, browser_wasm]}
+      pass: true
+      reason: "It runs entirely client-side."
+
+  private_by_design:
+    - when: {works_offline: {eq: false}}
+      pass: false
+      reason: "It does not work offline."
+    - when: {needs_account: {eq: true}}
+      pass: false
+      reason: "It requires an account."
+    - when: {emits_tracking: {eq: true}}
+      pass: false
+      reason: "It emits tracking."
+    - when: {connect_src_self: {eq: false}}
+      pass: false
+      reason: "It cannot run under connect-src 'self'."
+    - when:
+        works_offline: {eq: true}
+        needs_account: {eq: false}
+        emits_tracking: {eq: false}
+        connect_src_self: {eq: true}
+      pass: true
+      reason: "It works offline, with no account, no tracking and connect-src 'self'."
+
+  # The verb lists are deliberately closed. A sentence that opens with a
+  # word on neither list is not judged: the item is paused until someone
+  # adds the word to one list or the other.
+  one_job:
+    - when: {task_count: {gte: 2}}
+      pass: false
+      reason: "It does more than one job."
+    - when:
+        task_count: {eq: 1}
+        task_sentence:
+          first_word_in: [count, check, build, list, format, map, extract, measure, number, sort]
+      pass: true
+      reason: "It does one job, stated in one verb-first sentence."
+    - when:
+        task_count: {eq: 1}
+        task_sentence:
+          first_word_in: [a, an, the, this, it, tool, helps, lets, allows, provides, is, are, can, will, users, you, we]
+      pass: false
+      reason: "The job is not stated as an active, verb-first sentence."
+
+  arithmetic_not_advice:
+    - when: {output_kinds: {any_in: [legal_advice, compliance_determination]}}
+      pass: false
+      reason: "It renders advice or a legal conclusion."
+    - when: {output_kinds: {all_in: [computed_number, structured_data, citation_lookup]}}
+      pass: true
+      reason: "It computes numbers, structures data or looks up citations."
+
+factors:
+  # Need: count of distinct public signals that small businesses need this.
+  need:
+    - when: {need_signals: {gte: 30}}
+      rating: 5
+    - when: {need_signals: {gte: 15, lte: 29}}
+      rating: 4
+    - when: {need_signals: {gte: 8, lte: 14}}
+      rating: 3
+    - when: {need_signals: {gte: 3, lte: 7}}
+      rating: 2
+    - when: {need_signals: {lte: 2}}
+      rating: 1
+
+  # Gap: 1 means a complete free tool already exists (link to it).
+  gap:
+    - when: {best_alternative: {in: [none]}}
+      rating: 5
+    - when: {best_alternative: {in: [paid_only]}}
+      rating: 4
+    - when: {best_alternative: {in: [outdated]}}
+      rating: 3
+    - when: {best_alternative: {in: [partial]}}
+      rating: 2
+    - when: {best_alternative: {in: [complete]}}
+      rating: 1
+
+  # Strength of public source: a regulation that fixes the number outranks an
+  # agency's instructions, which outrank guidance written for another purpose.
+  public_source_strength:
+    - when:
+        source_kind: {in: [statute, far, dfars]}
+        source_precision: {in: [exact_formula, lookup_table]}
+      rating: 5
+    - when:
+        source_kind: {in: [statute, far, dfars]}
+        source_precision: {in: [defined_procedure]}
+      rating: 4
+    - when:
+        source_kind: {in: [agency_publication]}
+        source_precision: {in: [exact_formula, lookup_table, defined_procedure]}
+      rating: 3
+    - when:
+        source_kind: {in: [nist_sp]}
+        source_precision: {in: [exact_formula, lookup_table, defined_procedure]}
+      rating: 2
+    - when:
+        source_kind: {in: [statute, far, dfars, nist_sp, agency_publication]}
+        source_precision: {in: [general_principle]}
+      rating: 1
+
+  # Fits in a browser: proposal documents are large, so the bands are wide.
+  browser_fit:
+    - when: {largest_input_kb: {lte: 2000}}
+      rating: 5
+    - when: {largest_input_kb: {gte: 2001, lte: 10000}}
+      rating: 4
+    - when: {largest_input_kb: {gte: 10001, lte: 50000}}
+      rating: 3
+    - when: {largest_input_kb: {gte: 50001, lte: 200000}}
+      rating: 2
+    - when: {largest_input_kb: {gte: 200001}}
+      rating: 1
+
+  # Small enough to read: estimated lines of source.
+  readable_size:
+    - when: {est_source_lines: {lte: 500}}
+      rating: 5
+    - when: {est_source_lines: {gte: 501, lte: 1200}}
+      rating: 4
+    - when: {est_source_lines: {gte: 1201, lte: 2500}}
+      rating: 3
+    - when: {est_source_lines: {gte: 2501, lte: 5000}}
+      rating: 2
+    - when: {est_source_lines: {gte: 5001}}
+      rating: 1
+
+  # Can be checked: published worked examples to test the result against.
+  checkable:
+    - when: {worked_examples: {gte: 8}}
+      rating: 5
+    - when: {worked_examples: {gte: 4, lte: 7}}
+      rating: 4
+    - when: {worked_examples: {gte: 2, lte: 3}}
+      rating: 3
+    - when: {worked_examples: {eq: 1}}
+      rating: 2
+    - when: {worked_examples: {eq: 0}}
+      rating: 1
+
+  # Low upkeep: how often the instructions change, and how many templates
+  # change with them.
+  low_upkeep:
+    - when:
+        reference_updates_per_year: {eq: 0}
+        template_count: {lte: 3}
+      rating: 5
+    - when:
+        reference_updates_per_year: {eq: 0}
+        template_count: {gte: 4}
+      rating: 4
+    - when:
+        reference_updates_per_year: {gte: 1, lte: 2}
+        template_count: {lte: 3}
+      rating: 4
+    - when:
+        reference_updates_per_year: {gte: 1, lte: 2}
+        template_count: {gte: 4}
+      rating: 3
+    - when: {reference_updates_per_year: {gte: 3, lte: 6}}
+      rating: 2
+    - when: {reference_updates_per_year: {gte: 7}}
+      rating: 1

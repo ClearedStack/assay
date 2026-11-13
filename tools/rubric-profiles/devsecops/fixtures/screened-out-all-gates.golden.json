@@ -1,0 +1,49 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-2009",
+  "state": "screened_out",
+  "category": "devsecops",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "devsecops",
+    "profile_version": 1
+  },
+  "gates": [
+    {
+      "id": "public_source",
+      "name": "Public source",
+      "pass": false,
+      "rule": 2,
+      "reason": "The governing source is not a statute, a regulation or an official government publication."
+    },
+    {
+      "id": "runs_in_browser",
+      "name": "Runs in the browser",
+      "pass": false,
+      "rule": 1,
+      "reason": "It needs a backend server."
+    },
+    {
+      "id": "private_by_design",
+      "name": "Private by design",
+      "pass": false,
+      "rule": 1,
+      "reason": "It does not work offline."
+    },
+    {
+      "id": "one_job",
+      "name": "One job",
+      "pass": false,
+      "rule": 1,
+      "reason": "It does more than one job."
+    },
+    {
+      "id": "arithmetic_not_advice",
+      "name": "Arithmetic, not advice",
+      "pass": false,
+      "rule": 1,
+      "reason": "It renders advice or a legal conclusion."
+    }
+  ]
+}

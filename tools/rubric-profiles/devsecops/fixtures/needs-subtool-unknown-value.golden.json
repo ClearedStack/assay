@@ -1,0 +1,18 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-2014",
+  "state": "needs_subtool",
+  "category": "devsecops",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "devsecops",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_NEEDS_SUBTOOL",
+    "reason": "unknown_value",
+    "where": "source_kind",
+    "fingerprint": "3d3bd76bdbb863aa"
+  }
+}

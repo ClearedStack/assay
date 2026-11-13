@@ -1,0 +1,43 @@
+{
+  "lease": "PA-2007.1",
+  "kind": "item",
+  "id": "PA-2007",
+  "state": "observed",
+  "lane": "normal",
+  "attempt": 1,
+  "expires": "2026-01-05T09:01:00Z",
+  "results": {
+    "sextant": {
+      "category": "devsecops",
+      "facts": {
+        "source_kind": "agency_publication",
+        "source_public": true,
+        "source_precision": "lookup_table",
+        "client_runtime": "browser_js",
+        "needs_backend": false,
+        "needs_remote_api": false,
+        "largest_input_kb": 800,
+        "works_offline": true,
+        "needs_account": false,
+        "emits_tracking": false,
+        "connect_src_self": true,
+        "task_count": 1,
+        "task_sentence": "Generate a pipeline file from a made-up checklist.",
+        "output_kinds": [
+          "computed_number"
+        ],
+        "need_signals": 27,
+        "best_alternative": "paid_only",
+        "est_source_lines": 550,
+        "worked_examples": 10,
+        "reference_updates_per_year": 1,
+        "roadmap_phase_fit": 2,
+        "community_demand": 14,
+        "config_formats": 3
+      }
+    },
+    "trawl": {
+      "source": "made-up source"
+    }
+  }
+}

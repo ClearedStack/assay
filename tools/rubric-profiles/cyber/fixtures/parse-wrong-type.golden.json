@@ -1,0 +1,17 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-1017",
+  "category": "cyber",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "cyber",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_PARSE",
+    "reason": "invalid_type",
+    "where": "task_count",
+    "fingerprint": "7e852b2c502042fd"
+  }
+}

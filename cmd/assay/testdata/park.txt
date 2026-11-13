@@ -1,0 +1,31 @@
+Item:     PA-4003
+Category: pricing
+Rules:    rubric v1, profile pricing v1
+State:    scored
+
+Knockout gates
+  PASS  Public source           The rules come from officially released public material.
+  PASS  Runs in the browser     It runs entirely client-side.
+  PASS  Private by design       It works offline, with no account, no tracking and connect-src 'self'.
+  PASS  One job                 It does one job, stated in one verb-first sentence.
+  PASS  Arithmetic, not advice  It computes numbers, structures data or looks up citations.
+
+Rubric
+  Need for small businesses     3 x 4 =  12
+  Gap                           3 x 4 =  12
+  Strength of public source     3 x 3 =   9
+  Fits in a browser             3 x 3 =   9
+  Small enough to read          3 x 2 =   6
+  Can be checked                3 x 2 =   6
+  Low upkeep of reference data  3 x 2 =   6
+  Total                                  60 / 100
+
+Recommendation: Park
+Split/merge review: no
+
+Tie-breakers (higher sorts first)
+  1. Roadmap phase fit       2
+  2. Gap severity            3
+  3. Low upkeep              3
+  4. Small code footprint    3
+  5. Community demand        14

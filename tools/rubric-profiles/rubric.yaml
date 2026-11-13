@@ -1,0 +1,50 @@
+# The rubric every category shares. The numbers here are the ones SPEC.md
+# gives; a test holds them to it. Change SPEC.md first, then this file.
+version: 1
+
+# Five binary knockout gates. A candidate must clear all five to be scored.
+gates:
+  - {id: public_source, name: "Public source"}
+  - {id: runs_in_browser, name: "Runs in the browser"}
+  - {id: private_by_design, name: "Private by design"}
+  - {id: one_job, name: "One job"}
+  - {id: arithmetic_not_advice, name: "Arithmetic, not advice"}
+
+# Each factor is rated 1 to 5 and multiplied by its weight. The weights add
+# up to 20, so the total runs from 20 to 100.
+rating: {min: 1, max: 5}
+factors:
+  - {id: need, name: "Need for small businesses", weight: 4}
+  - {id: gap, name: "Gap", weight: 4}
+  - {id: public_source_strength, name: "Strength of public source", weight: 3}
+  - {id: browser_fit, name: "Fits in a browser", weight: 3}
+  - {id: readable_size, name: "Small enough to read", weight: 2}
+  - {id: checkable, name: "Can be checked", weight: 2}
+  - {id: low_upkeep, name: "Low upkeep of reference data", weight: 2}
+
+# Exactly one of these applies to any set of ratings; the loader proves it.
+recommendations:
+  - name: Build
+    total: {min: 75}
+    factor: {factor: gap, min: 2}
+  - name: Link
+    total: {min: 75}
+    factor: {factor: gap, max: 1}
+  - name: Park
+    total: {min: 55, max: 74}
+  - name: Reject
+    total: {max: 54}
+
+# Flag for split/merge review when every condition holds.
+split_merge_review:
+  - {factor: need, min: 4, max: 5}
+  - {factor: readable_size, min: 1, max: 2}
+
+# Applied in this order to candidates with the same total. A higher value
+# sorts first. If all five are equal, the item ID decides.
+tie_breakers:
+  - {id: roadmap_phase_fit, name: "Roadmap phase fit", fact: roadmap_phase_fit}
+  - {id: gap_severity, name: "Gap severity", factor: gap}
+  - {id: low_upkeep, name: "Low upkeep", factor: low_upkeep}
+  - {id: small_code_footprint, name: "Small code footprint", factor: readable_size}
+  - {id: community_demand, name: "Community demand", fact: community_demand}

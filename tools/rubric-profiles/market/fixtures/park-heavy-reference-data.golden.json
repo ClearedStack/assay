@@ -1,0 +1,137 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-3007",
+  "state": "scored",
+  "category": "market",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "market",
+    "profile_version": 1
+  },
+  "gates": [
+    {
+      "id": "public_source",
+      "name": "Public source",
+      "pass": true,
+      "rule": 3,
+      "reason": "The rules come from officially released public material."
+    },
+    {
+      "id": "runs_in_browser",
+      "name": "Runs in the browser",
+      "pass": true,
+      "rule": 4,
+      "reason": "It runs entirely client-side."
+    },
+    {
+      "id": "private_by_design",
+      "name": "Private by design",
+      "pass": true,
+      "rule": 5,
+      "reason": "It works offline, with no account, no tracking and connect-src 'self'."
+    },
+    {
+      "id": "one_job",
+      "name": "One job",
+      "pass": true,
+      "rule": 2,
+      "reason": "It does one job, stated in one verb-first sentence."
+    },
+    {
+      "id": "arithmetic_not_advice",
+      "name": "Arithmetic, not advice",
+      "pass": true,
+      "rule": 2,
+      "reason": "It computes numbers, structures data or looks up citations."
+    }
+  ],
+  "factors": [
+    {
+      "id": "need",
+      "name": "Need for small businesses",
+      "rating": 4,
+      "weight": 4,
+      "points": 16,
+      "rule": 2
+    },
+    {
+      "id": "gap",
+      "name": "Gap",
+      "rating": 4,
+      "weight": 4,
+      "points": 16,
+      "rule": 2
+    },
+    {
+      "id": "public_source_strength",
+      "name": "Strength of public source",
+      "rating": 3,
+      "weight": 3,
+      "points": 9,
+      "rule": 4
+    },
+    {
+      "id": "browser_fit",
+      "name": "Fits in a browser",
+      "rating": 1,
+      "weight": 3,
+      "points": 3,
+      "rule": 6
+    },
+    {
+      "id": "readable_size",
+      "name": "Small enough to read",
+      "rating": 4,
+      "weight": 2,
+      "points": 8,
+      "rule": 2
+    },
+    {
+      "id": "checkable",
+      "name": "Can be checked",
+      "rating": 4,
+      "weight": 2,
+      "points": 8,
+      "rule": 2
+    },
+    {
+      "id": "low_upkeep",
+      "name": "Low upkeep of reference data",
+      "rating": 4,
+      "weight": 2,
+      "points": 8,
+      "rule": 2
+    }
+  ],
+  "total": 68,
+  "recommendation": "Park",
+  "split_merge_review": false,
+  "tie_breakers": [
+    {
+      "id": "roadmap_phase_fit",
+      "name": "Roadmap phase fit",
+      "value": 2
+    },
+    {
+      "id": "gap_severity",
+      "name": "Gap severity",
+      "value": 4
+    },
+    {
+      "id": "low_upkeep",
+      "name": "Low upkeep",
+      "value": 4
+    },
+    {
+      "id": "small_code_footprint",
+      "name": "Small code footprint",
+      "value": 4
+    },
+    {
+      "id": "community_demand",
+      "name": "Community demand",
+      "value": 14
+    }
+  ]
+}

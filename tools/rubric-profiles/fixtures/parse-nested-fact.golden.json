@@ -1,0 +1,12 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-9031",
+  "category": "pricing",
+  "error": {
+    "code": "E_PARSE",
+    "reason": "invalid_type",
+    "where": "facts",
+    "fingerprint": "48b0c10af6684698"
+  }
+}

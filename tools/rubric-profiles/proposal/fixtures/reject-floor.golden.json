@@ -1,0 +1,137 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-5005",
+  "state": "scored",
+  "category": "proposal",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "proposal",
+    "profile_version": 1
+  },
+  "gates": [
+    {
+      "id": "public_source",
+      "name": "Public source",
+      "pass": true,
+      "rule": 3,
+      "reason": "The rules come from officially released public material."
+    },
+    {
+      "id": "runs_in_browser",
+      "name": "Runs in the browser",
+      "pass": true,
+      "rule": 4,
+      "reason": "It runs entirely client-side."
+    },
+    {
+      "id": "private_by_design",
+      "name": "Private by design",
+      "pass": true,
+      "rule": 5,
+      "reason": "It works offline, with no account, no tracking and connect-src 'self'."
+    },
+    {
+      "id": "one_job",
+      "name": "One job",
+      "pass": true,
+      "rule": 2,
+      "reason": "It does one job, stated in one verb-first sentence."
+    },
+    {
+      "id": "arithmetic_not_advice",
+      "name": "Arithmetic, not advice",
+      "pass": true,
+      "rule": 2,
+      "reason": "It computes numbers, structures data or looks up citations."
+    }
+  ],
+  "factors": [
+    {
+      "id": "need",
+      "name": "Need for small businesses",
+      "rating": 1,
+      "weight": 4,
+      "points": 4,
+      "rule": 5
+    },
+    {
+      "id": "gap",
+      "name": "Gap",
+      "rating": 1,
+      "weight": 4,
+      "points": 4,
+      "rule": 5
+    },
+    {
+      "id": "public_source_strength",
+      "name": "Strength of public source",
+      "rating": 1,
+      "weight": 3,
+      "points": 3,
+      "rule": 5
+    },
+    {
+      "id": "browser_fit",
+      "name": "Fits in a browser",
+      "rating": 1,
+      "weight": 3,
+      "points": 3,
+      "rule": 5
+    },
+    {
+      "id": "readable_size",
+      "name": "Small enough to read",
+      "rating": 1,
+      "weight": 2,
+      "points": 2,
+      "rule": 5
+    },
+    {
+      "id": "checkable",
+      "name": "Can be checked",
+      "rating": 1,
+      "weight": 2,
+      "points": 2,
+      "rule": 5
+    },
+    {
+      "id": "low_upkeep",
+      "name": "Low upkeep of reference data",
+      "rating": 1,
+      "weight": 2,
+      "points": 2,
+      "rule": 6
+    }
+  ],
+  "total": 20,
+  "recommendation": "Reject",
+  "split_merge_review": false,
+  "tie_breakers": [
+    {
+      "id": "roadmap_phase_fit",
+      "name": "Roadmap phase fit",
+      "value": 0
+    },
+    {
+      "id": "gap_severity",
+      "name": "Gap severity",
+      "value": 1
+    },
+    {
+      "id": "low_upkeep",
+      "name": "Low upkeep",
+      "value": 1
+    },
+    {
+      "id": "small_code_footprint",
+      "name": "Small code footprint",
+      "value": 1
+    },
+    {
+      "id": "community_demand",
+      "name": "Community demand",
+      "value": 0
+    }
+  ]
+}
