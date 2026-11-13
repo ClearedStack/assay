@@ -87,7 +87,7 @@ func cmdRun(ctx context.Context, args []string, stdout, stderr io.Writer, getenv
 		Hub: hub, Engine: eng, Spool: sp, Log: log,
 		HubTimeout: timeout, PollInterval: poll, BackoffMin: backoffMin, BackoffMax: backoffMax,
 	}
-	log.Info("worker_started", "worker", contract.Worker, "version", version, "contract_version", contract.Version)
+	log.Info("worker_started", "worker", contract.Worker, "version", version, "contract", contract.Version)
 	w.Run(ctx)
 	log.Info("worker_stopped")
 	return exitOK
@@ -107,53 +107,42 @@ func duration(value string, fallback time.Duration) (time.Duration, bool) {
 // runStandin runs the real worker loop against the in-memory stand-in for
 // Muster, so Assay can be seen working with nothing else installed.
 //
-// Records are read from dir. A record in dir/urgent, dir/normal or
-// dir/backfill goes into that lane; a record directly in dir goes into the
-// normal lane. The worker drains the lanes, and each outcome is printed in
-// the order it was handed back.
+// Each .json file in dir is one lease reply, as Muster would send it. Each
+// joins the lane it names. The worker takes them urgent lane first, and
+// what Assay reported for each is printed in the order it was reported.
 func runStandin(ctx context.Context, dir string, eng *engine.Engine, stdout, stderr io.Writer) int {
 	hub := muster.NewMemory()
-	total := 0
-	load := func(lane muster.Lane, pattern string) error {
-		paths, err := filepath.Glob(pattern)
-		if err != nil {
-			return err
-		}
-		sort.Strings(paths)
-		for _, path := range paths {
-			data, err := readRecord(path, nil)
-			if err != nil {
-				return err
-			}
-			hub.Add(lane, data)
-			total++
-		}
-		return nil
+	paths, err := filepath.Glob(filepath.Join(dir, "*.json"))
+	if err != nil || len(paths) == 0 {
+		say(stderr, "assay: no records found")
+		return exitFailure
 	}
-	for _, lane := range muster.Lanes {
-		if err := load(lane, filepath.Join(dir, string(lane), "*.json")); err != nil {
+	sort.Strings(paths)
+	for _, path := range paths {
+		data, err := readRecord(path, nil)
+		if err != nil {
 			say(stderr, "assay: a record could not be read")
 			return exitFailure
 		}
-	}
-	if err := load(muster.Normal, filepath.Join(dir, "*.json")); err != nil {
-		say(stderr, "assay: a record could not be read")
-		return exitFailure
-	}
-	if total == 0 {
-		say(stderr, "assay: no records found")
-		return exitFailure
+		hub.Add(data)
 	}
 
 	w := &worker.Worker{
 		Hub: hub, Engine: eng, Log: slog.New(slog.NewJSONHandler(stderr, nil)),
 		HubTimeout: defaultHubTimeout, BackoffMin: backoffMin, BackoffMax: backoffMax,
 	}
-	for ctx.Err() == nil && w.Step(ctx) == worker.Worked {
+	for ctx.Err() == nil && w.Step(ctx) != worker.Idle {
 	}
 	for _, c := range hub.Completions() {
-		if _, err := stdout.Write(c.Outcome); err != nil {
-			return exitFailure
+		switch c.Call {
+		case muster.CallComplete:
+			if _, err := stdout.Write(c.Result); err != nil {
+				return exitFailure
+			}
+		case muster.CallNeedsSubtool:
+			sayf(stdout, "{\n  \"id\": %q,\n  \"call\": \"needs_subtool\"\n}\n", c.ItemID)
+		case muster.CallFail:
+			sayf(stdout, "{\n  \"id\": %q,\n  \"call\": \"fail\",\n  \"code\": %q\n}\n", c.ItemID, string(c.Code))
 		}
 	}
 	return exitOK

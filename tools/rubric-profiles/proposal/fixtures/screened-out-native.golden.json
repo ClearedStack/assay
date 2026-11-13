@@ -1,8 +1,8 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "proposal-screened-out-native",
-  "state": "screened-out",
+  "id": "PA-5010",
+  "state": "screened_out",
   "category": "proposal",
   "rules": {
     "rubric_version": 1,

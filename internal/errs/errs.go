@@ -51,6 +51,9 @@ const (
 	UnknownFact     Reason = "unknown_fact"
 	UnknownValue    Reason = "unknown_value"
 	NoMatchingRule  Reason = "no_matching_rule"
+	// HubContractUnknown: the hub answered that it does not know this
+	// contract version.
+	HubContractUnknown Reason = "hub_contract_unknown"
 )
 
 // Reasons for E_TIMEOUT.

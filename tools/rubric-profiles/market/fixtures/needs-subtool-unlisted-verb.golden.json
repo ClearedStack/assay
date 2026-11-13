@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "market-needs-subtool-unlisted-verb",
+  "id": "PA-3015",
   "state": "needs_subtool",
   "category": "market",
   "rules": {

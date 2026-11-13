@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "market-parse-missing-fact",
+  "id": "PA-3016",
   "category": "market",
   "rules": {
     "rubric_version": 1,

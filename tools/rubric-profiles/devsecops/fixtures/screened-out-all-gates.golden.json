@@ -1,8 +1,8 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "devsecops-screened-out-all-gates",
-  "state": "screened-out",
+  "id": "PA-2009",
+  "state": "screened_out",
   "category": "devsecops",
   "rules": {
     "rubric_version": 1,

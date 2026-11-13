@@ -1,0 +1,12 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-9007",
+  "state": "needs_subtool",
+  "error": {
+    "code": "E_NEEDS_SUBTOOL",
+    "reason": "unknown_category",
+    "where": "category",
+    "fingerprint": "63b1f834cbe4ffa8"
+  }
+}

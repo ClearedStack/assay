@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "cyber-needs-subtool-unknown-value",
+  "id": "PA-1014",
   "state": "needs_subtool",
   "category": "cyber",
   "rules": {

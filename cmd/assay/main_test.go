@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"flag"
 	"os"
 	"path/filepath"
@@ -129,37 +130,55 @@ func TestRank(t *testing.T) {
 
 func TestRunWithStandIn(t *testing.T) {
 	dir := t.TempDir()
-	copyTo := func(src, dst string) {
+	copyTo := func(src, dst, lane string) {
 		data, err := os.ReadFile(filepath.Join(fixtures, src))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, dst)), 0o755); err != nil {
-			t.Fatal(err)
-		}
+		data = []byte(strings.Replace(string(data), `"lane": "normal"`, `"lane": "`+lane+`"`, 1))
 		if err := os.WriteFile(filepath.Join(dir, dst), data, 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
-	copyTo("pricing/fixtures/build.input.json", "b.json")
-	copyTo("pricing/fixtures/reject.input.json", "a.json")
-	copyTo("cyber/fixtures/park.input.json", "backfill/z.json")
-	copyTo("market/fixtures/needs-subtool-unknown-fact.input.json", "urgent/u.json")
+	copyTo("pricing/fixtures/build.input.json", "b.json", "normal")
+	copyTo("pricing/fixtures/reject.input.json", "a.json", "normal")
+	copyTo("cyber/fixtures/park.input.json", "c.json", "backfill")
+	copyTo("market/fixtures/needs-subtool-unknown-fact.input.json", "z.json", "urgent")
+	copyTo("proposal/fixtures/parse-wrong-type.input.json", "y.json", "normal")
 
 	code, out, logs := runCLI(t, "", noEnv, "run", "-standin", dir)
 	if code != exitOK {
 		t.Fatalf("exit %d: %s", code, logs)
 	}
-	var want strings.Builder
-	for _, name := range []string{"market/fixtures/needs-subtool-unknown-fact", "pricing/fixtures/reject", "pricing/fixtures/build", "cyber/fixtures/park"} {
-		data, err := os.ReadFile(filepath.Join(fixtures, name+".golden.json"))
+	read := func(name string) string {
+		data, err := os.ReadFile(filepath.Join(fixtures, name))
 		if err != nil {
 			t.Fatal(err)
 		}
-		want.Write(data)
+		return string(data)
 	}
-	if out != want.String() {
-		t.Errorf("the stand-in run should print the golden outcomes, urgent lane first:\n%s", out)
+	// The urgent item first, then the normal lane in file order, then
+	// backfill. A decided item prints its outcome; the other two print the
+	// call that was made, which is all Muster is told.
+	idOf := func(name string) string {
+		var head struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal([]byte(read(name)), &head); err != nil || head.ID == "" {
+			t.Fatalf("%s has no readable id", name)
+		}
+		return head.ID
+	}
+	want := "{\n  \"id\": \"" + idOf("market/fixtures/needs-subtool-unknown-fact.input.json") + "\",\n  \"call\": \"needs_subtool\"\n}\n" +
+		read("pricing/fixtures/reject.golden.json") +
+		read("pricing/fixtures/build.golden.json") +
+		"{\n  \"id\": \"" + idOf("proposal/fixtures/parse-wrong-type.input.json") + "\",\n  \"call\": \"fail\",\n  \"code\": \"E_PARSE\"\n}\n" +
+		read("cyber/fixtures/park.golden.json")
+	if out != want {
+		t.Errorf("unexpected output from the stand-in run:\n%s\n--- want ---\n%s", out, want)
+	}
+	if !strings.Contains(logs, `"reason":"unknown_fact"`) || !strings.Contains(logs, `"reason":"invalid_type"`) {
+		t.Errorf("the reasons should be in the log:\n%s", logs)
 	}
 
 	if code, _, _ := runCLI(t, "", noEnv, "run", "-standin", t.TempDir()); code != exitFailure {

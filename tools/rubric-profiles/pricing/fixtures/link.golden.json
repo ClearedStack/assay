@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "pricing-link",
+  "id": "PA-4002",
   "state": "scored",
   "category": "pricing",
   "rules": {

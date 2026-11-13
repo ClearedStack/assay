@@ -20,7 +20,7 @@ func TestPutListRemove(t *testing.T) {
 	if err := s.Put("lease-000001", []byte(`{"state":"scored"}`)); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Put("lease-000002", []byte(`{"state":"screened-out"}`)); err != nil {
+	if err := s.Put("lease-000002", []byte(`{"state":"screened_out"}`)); err != nil {
 		t.Fatal(err)
 	}
 	// Saving the same lease again replaces the entry; it does not add one.
@@ -34,9 +34,9 @@ func TestPutListRemove(t *testing.T) {
 	}
 	byLease := map[string]string{}
 	for _, e := range entries {
-		byLease[e.LeaseID] = string(e.Outcome)
+		byLease[e.Lease] = string(e.Payload)
 	}
-	if byLease["lease-000001"] != `{"state":"scored","total":86}` || byLease["lease-000002"] != `{"state":"screened-out"}` {
+	if byLease["lease-000001"] != `{"state":"scored","total":86}` || byLease["lease-000002"] != `{"state":"screened_out"}` {
 		t.Errorf("unexpected entries: %v", byLease)
 	}
 
@@ -74,7 +74,7 @@ func TestLeaseIDIsNeverUsedAsAPath(t *testing.T) {
 		t.Errorf("unexpected spool contents: %v", names)
 	}
 	entries, _ := s.List()
-	if len(entries) != 1 || entries[0].LeaseID != "../../escape/attempt" {
+	if len(entries) != 1 || entries[0].Lease != "../../escape/attempt" {
 		t.Errorf("the lease ID did not round-trip: %+v", entries)
 	}
 }
@@ -84,7 +84,7 @@ func TestOpenClearsLeftoversAndListDropsWhatCannotBeRead(t *testing.T) {
 	for name, content := range map[string]string{
 		".tmp-123":     "half written",
 		"garbage.json": "not json",
-		"empty.json":   `{"lease_id":"","outcome":"e30="}`,
+		"empty.json":   `{"lease":"","payload":"e30="}`,
 		"notes.txt":    "left by someone else",
 	} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600); err != nil {
@@ -99,7 +99,7 @@ func TestOpenClearsLeftoversAndListDropsWhatCannotBeRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	entries, _ := s.List()
-	if len(entries) != 1 || entries[0].LeaseID != "lease-1" {
+	if len(entries) != 1 || entries[0].Lease != "lease-1" {
 		t.Fatalf("unexpected entries: %+v", entries)
 	}
 	left, _ := os.ReadDir(dir)

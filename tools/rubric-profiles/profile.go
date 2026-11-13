@@ -120,9 +120,9 @@ type profileYAML struct {
 type matchYAML struct {
 	Profile string `yaml:"profile"`
 	Match   struct {
-		ContractVersion string `yaml:"contract_version"`
-		State           string `yaml:"state"`
-		Category        string `yaml:"category"`
+		Contract string `yaml:"contract"`
+		State    string `yaml:"state"`
+		Category string `yaml:"category"`
 	} `yaml:"match"`
 }
 
@@ -135,8 +135,8 @@ func parseMatch(data []byte, dir string) (string, error) {
 	if y.Profile != dir {
 		return "", fmt.Errorf("profile is %q but the folder is %q", y.Profile, dir)
 	}
-	if y.Match.ContractVersion != contract.Version {
-		return "", fmt.Errorf("match.contract_version must be %q", contract.Version)
+	if y.Match.Contract != contract.Version {
+		return "", fmt.Errorf("match.contract must be %q", contract.Version)
 	}
 	if y.Match.State != contract.StateObserved {
 		return "", fmt.Errorf("match.state must be %q", contract.StateObserved)

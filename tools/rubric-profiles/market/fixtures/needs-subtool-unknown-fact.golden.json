@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "market-needs-subtool-unknown-fact",
+  "id": "PA-3013",
   "state": "needs_subtool",
   "category": "market",
   "rules": {

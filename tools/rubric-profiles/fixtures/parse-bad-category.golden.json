@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "match-parse-bad-category",
+  "id": "PA-9023",
   "error": {
     "code": "E_PARSE",
     "reason": "invalid_value",

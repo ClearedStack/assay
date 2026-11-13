@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "match-parse-mixed-list",
+  "id": "PA-9032",
   "category": "pricing",
   "error": {
     "code": "E_PARSE",

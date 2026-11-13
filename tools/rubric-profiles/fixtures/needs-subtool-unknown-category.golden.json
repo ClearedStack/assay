@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "match-needs-subtool-unknown-category",
+  "id": "PA-9004",
   "state": "needs_subtool",
   "category": "logistics",
   "error": {

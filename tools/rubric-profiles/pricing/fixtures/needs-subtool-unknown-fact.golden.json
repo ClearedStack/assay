@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "pricing-needs-subtool-unknown-fact",
+  "id": "PA-4017",
   "state": "needs_subtool",
   "category": "pricing",
   "rules": {

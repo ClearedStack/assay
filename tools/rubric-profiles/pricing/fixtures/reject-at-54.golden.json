@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "pricing-reject-at-54",
+  "id": "PA-4010",
   "state": "scored",
   "category": "pricing",
   "rules": {

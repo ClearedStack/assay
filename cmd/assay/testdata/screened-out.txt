@@ -1,7 +1,7 @@
-Item:     pricing-screened-out-all-gates
+Item:     PA-4013
 Category: pricing
 Rules:    rubric v1, profile pricing v1
-State:    screened-out
+State:    screened_out
 
 Knockout gates
   FAIL  Public source           The governing source is not a statute, a regulation or an official government publication.

@@ -1,10 +1,11 @@
-// Package worker is Assay's polling loop: lease an observed record from
-// Muster, evaluate it, hand the outcome back, and never lose a finished
-// outcome on the way.
+// Package worker is Assay's polling loop: lease an item from Muster,
+// evaluate it, report what was decided, and never lose a finished report on
+// the way.
 package worker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"time"
@@ -20,17 +21,17 @@ import (
 type Status int
 
 const (
-	// Worked: an item was evaluated and handed back. Look for more at once.
+	// Worked: an item was evaluated and reported. Look for more at once.
 	Worked Status = iota
-	// Idle: every lane was empty. Wait for the poll interval.
+	// Idle: the hub had nothing for Assay. Wait for the poll interval.
 	Idle
 	// Retry: the hub did not take or give something. Back off.
 	Retry
 )
 
-// Worker holds what the loop needs. Spool may be nil, in which case an
-// outcome the hub cannot take is dropped and the hub leases the record
-// again later.
+// Worker holds what the loop needs. Spool may be nil, in which case a
+// report the hub cannot take is dropped and the hub offers the item again
+// later.
 type Worker struct {
 	Hub    muster.Hub
 	Engine *engine.Engine
@@ -39,7 +40,7 @@ type Worker struct {
 
 	// HubTimeout bounds each call to the hub.
 	HubTimeout time.Duration
-	// PollInterval is the wait after finding every lane empty.
+	// PollInterval is the wait after the hub had nothing to offer.
 	PollInterval time.Duration
 	// BackoffMin and BackoffMax bound the wait after a failed hub call. The
 	// wait doubles with each failure in a row and is not randomised.
@@ -69,80 +70,101 @@ func (w *Worker) Run(ctx context.Context) {
 
 // Step does one unit of work.
 //
-// Outcomes waiting in the spool go first: nothing new is leased until the
+// Reports waiting in the spool go first: nothing new is leased until the
 // hub has taken them. That keeps the spool to a single entry in normal
 // running, and means a hub that is down is never asked for more work.
-// Then the lanes are tried in order, urgent before normal before backfill,
-// and the first record found is evaluated. After each item the order starts
-// again from urgent.
+// Then one item is leased and evaluated. Muster chooses which: the urgent
+// lane first, then normal, then backfill.
+//
+// Evaluating an item takes far less than a lease lasts, so the loop never
+// needs to send a heartbeat.
 func (w *Worker) Step(ctx context.Context) Status {
 	if !w.flushSpool(ctx) {
 		return Retry
 	}
-	for _, lane := range muster.Lanes {
-		lease, err := w.lease(ctx, lane)
-		if err != nil {
-			if ctx.Err() == nil {
-				w.logHubError("lease_failed", err)
-			}
-			return Retry
+	lease, err := w.lease(ctx)
+	if err != nil {
+		if ctx.Err() == nil {
+			w.logHubError("lease_failed", err)
 		}
-		if lease == nil {
-			continue
-		}
-		return w.process(ctx, lease)
+		return Retry
 	}
-	return Idle
+	if lease == nil {
+		return Idle
+	}
+	return w.process(ctx, lease)
 }
 
-func (w *Worker) lease(ctx context.Context, lane muster.Lane) (*muster.Lease, error) {
+func (w *Worker) lease(ctx context.Context) (*muster.Lease, error) {
 	cctx, cancel := context.WithTimeout(ctx, w.HubTimeout)
 	defer cancel()
-	return w.Hub.Lease(cctx, lane)
+	return w.Hub.Lease(cctx)
 }
 
-func (w *Worker) complete(ctx context.Context, leaseID string, outcome []byte) error {
-	// The outcome is finished work. Deliver it even if shutdown has begun.
+func (w *Worker) send(ctx context.Context, r muster.Report) error {
+	// The report is finished work. Deliver it even if shutdown has begun.
 	cctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), w.HubTimeout)
 	defer cancel()
-	return w.Hub.Complete(cctx, leaseID, outcome)
+	return w.Hub.Send(cctx, r)
+}
+
+// reportFor chooses the call that ends the lease. A decided item is
+// completed to its new state with the whole outcome as the result. An
+// unfamiliar one is paused. A broken one is failed with E_PARSE. Muster's
+// fail and needs_subtool calls carry no detail, so the reason and the
+// fingerprint of an error are in Assay's own log line and nowhere else.
+func reportFor(lease string, out *contract.Outcome) muster.Report {
+	switch {
+	case out.Error == nil:
+		return muster.Complete(lease, out.State, contract.Encode(out))
+	case out.Error.Code == errs.NeedsSubtool:
+		return muster.NeedsSubtool(lease)
+	}
+	return muster.Fail(lease, errs.Parse)
 }
 
 func (w *Worker) process(ctx context.Context, lease *muster.Lease) Status {
-	out := w.Engine.Evaluate(lease.Record)
-	payload := contract.Encode(out)
+	out := w.Engine.Evaluate(lease.Body)
+	report := reportFor(lease.ID, out)
 
-	attrs := []any{"lane", string(lease.Lane), "state", out.State}
+	attrs := []any{"call", string(report.Call), "state", out.State}
 	if out.ItemID != "" {
-		attrs = append(attrs, "item_id", out.ItemID)
+		attrs = append(attrs, "id", out.ItemID)
 	}
 	if out.Error != nil {
 		attrs = append(attrs, "code", string(out.Error.Code), "reason", string(out.Error.Reason), "fingerprint", out.Error.Fingerprint)
+		if out.Error.Where != "" {
+			attrs = append(attrs, "where", out.Error.Where)
+		}
 	}
 	w.Log.Info("item_evaluated", attrs...)
 
-	err := w.complete(ctx, lease.ID, payload)
+	err := w.send(ctx, report)
 	if err == nil {
 		return Worked
 	}
 	if w.deliveryIsHopeless(err) {
 		return Worked
 	}
-	// The hub did not answer. Keep the finished outcome and try again.
-	w.logHubError("complete_failed", err)
+	// The hub did not answer. Keep the finished report and try again.
+	w.logHubError("report_failed", err)
 	if w.Spool == nil {
-		w.Log.Warn("outcome_dropped")
+		w.Log.Warn("report_dropped")
 		return Retry
 	}
-	if err := w.Spool.Put(lease.ID, payload); err != nil {
+	payload, err := json.Marshal(report)
+	if err == nil {
+		err = w.Spool.Put(report.Lease, payload)
+	}
+	if err != nil {
 		w.Log.Error("spool_write_failed")
 		return Retry
 	}
-	w.Log.Info("outcome_spooled")
+	w.Log.Info("report_spooled")
 	return Retry
 }
 
-// flushSpool hands every waiting outcome to the hub. It reports false if
+// flushSpool hands every waiting report to the hub. It reports false if
 // any is still waiting afterwards.
 func (w *Worker) flushSpool(ctx context.Context) bool {
 	if w.Spool == nil {
@@ -154,26 +176,32 @@ func (w *Worker) flushSpool(ctx context.Context) bool {
 		return false
 	}
 	for _, entry := range entries {
-		err := w.complete(ctx, entry.LeaseID, entry.Outcome)
-		if err != nil && !w.deliveryIsHopeless(err) {
-			w.logHubError("complete_failed", err)
+		var report muster.Report
+		delivered := false
+		if json.Unmarshal(entry.Payload, &report) != nil || report.Lease != entry.Lease {
+			// Not a report this build wrote. It can never be delivered.
+			w.Log.Warn("spool_entry_unreadable")
+		} else if err := w.send(ctx, report); err == nil {
+			delivered = true
+		} else if !w.deliveryIsHopeless(err) {
+			w.logHubError("report_failed", err)
 			return false
 		}
 		if err := w.Spool.Remove(entry); err != nil {
 			w.Log.Error("spool_remove_failed")
 			return false
 		}
-		if err == nil {
-			w.Log.Info("spooled_outcome_delivered")
+		if delivered {
+			w.Log.Info("spooled_report_delivered")
 		}
 	}
 	return true
 }
 
-// deliveryIsHopeless reports whether a failed completion can never succeed
-// by retrying: the lease is gone, or the hub says the outcome itself is
-// wrong. Either way the outcome is let go. The hub still holds the record,
-// and the same record always produces the same outcome.
+// deliveryIsHopeless reports whether a failed report can never succeed by
+// trying again: the lease is gone, or the hub says the report itself is
+// wrong. Either way the report is let go. The hub still holds the item,
+// and the same item always produces the same outcome.
 func (w *Worker) deliveryIsHopeless(err error) bool {
 	if errors.Is(err, muster.ErrLeaseGone) {
 		w.Log.Info("lease_gone")
@@ -181,7 +209,7 @@ func (w *Worker) deliveryIsHopeless(err error) bool {
 	}
 	var pub *errs.Error
 	if errors.As(err, &pub) && pub.Code == errs.Parse {
-		w.logHubError("outcome_refused", err)
+		w.logHubError("report_refused", err)
 		return true
 	}
 	return false

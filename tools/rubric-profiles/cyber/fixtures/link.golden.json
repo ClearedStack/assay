@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "cyber-link",
+  "id": "PA-1002",
   "state": "scored",
   "category": "cyber",
   "rules": {

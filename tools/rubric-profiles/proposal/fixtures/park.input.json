@@ -1,32 +1,43 @@
 {
-  "contract_version": "v1",
-  "item_id": "proposal-park",
+  "lease": "PA-5003.1",
+  "kind": "item",
+  "id": "PA-5003",
   "state": "observed",
-  "category": "proposal",
-  "facts": {
-    "source_kind": "agency_publication",
-    "source_public": true,
-    "source_precision": "lookup_table",
-    "client_runtime": "browser_js",
-    "needs_backend": false,
-    "needs_remote_api": false,
-    "largest_input_kb": 20000,
-    "works_offline": true,
-    "needs_account": false,
-    "emits_tracking": false,
-    "connect_src_self": true,
-    "task_count": 1,
-    "task_sentence": "Count pages in each made-up volume against its limit.",
-    "output_kinds": [
-      "computed_number"
-    ],
-    "need_signals": 10,
-    "best_alternative": "outdated",
-    "est_source_lines": 2000,
-    "worked_examples": 2,
-    "reference_updates_per_year": 2,
-    "roadmap_phase_fit": 2,
-    "community_demand": 14,
-    "template_count": 6
+  "lane": "normal",
+  "attempt": 1,
+  "expires": "2026-01-05T09:01:00Z",
+  "results": {
+    "sextant": {
+      "category": "proposal",
+      "facts": {
+        "source_kind": "agency_publication",
+        "source_public": true,
+        "source_precision": "lookup_table",
+        "client_runtime": "browser_js",
+        "needs_backend": false,
+        "needs_remote_api": false,
+        "largest_input_kb": 20000,
+        "works_offline": true,
+        "needs_account": false,
+        "emits_tracking": false,
+        "connect_src_self": true,
+        "task_count": 1,
+        "task_sentence": "Count pages in each made-up volume against its limit.",
+        "output_kinds": [
+          "computed_number"
+        ],
+        "need_signals": 10,
+        "best_alternative": "outdated",
+        "est_source_lines": 2000,
+        "worked_examples": 2,
+        "reference_updates_per_year": 2,
+        "roadmap_phase_fit": 2,
+        "community_demand": 14,
+        "template_count": 6
+      }
+    },
+    "trawl": {
+      "source": "made-up source"
+    }
   }
 }

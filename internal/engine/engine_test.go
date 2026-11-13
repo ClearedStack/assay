@@ -137,7 +137,7 @@ func TestScreenedOutShowsEveryGateAndNoScore(t *testing.T) {
 		t.Errorf("want exactly one failed gate, got %d", failed)
 	}
 	if out.Factors != nil || out.Total != nil || out.Recommendation != "" || out.SplitMergeReview != nil || out.TieBreakers != nil {
-		t.Error("a screened-out candidate must not be scored")
+		t.Error("a candidate that is screened out must not be scored")
 	}
 }
 
@@ -176,17 +176,25 @@ func TestErrorsNeverEchoTheInput(t *testing.T) {
 	const planted = "db01.corp.example"
 	leaks := []string{"db01", "corp", "10.20.30.40", "hunter2", "s3cr3t"}
 
+	observed := func(r map[string]any) map[string]any {
+		return r["results"].(map[string]any)["sextant"].(map[string]any)
+	}
+	facts := func(r map[string]any) map[string]any { return observed(r)["facts"].(map[string]any) }
 	mutations := map[string]func(r map[string]any){
-		"unknown envelope field": func(r map[string]any) { r["host_"+planted] = "10.20.30.40" },
-		"unknown fact":           func(r map[string]any) { r["facts"].(map[string]any)["password_hunter2"] = "s3cr3t" },
-		"unknown enum value":     func(r map[string]any) { r["facts"].(map[string]any)["source_kind"] = planted },
-		"unknown list value":     func(r map[string]any) { r["facts"].(map[string]any)["output_kinds"] = []any{"10.20.30.40"} },
-		"unlisted verb":          func(r map[string]any) { r["facts"].(map[string]any)["task_sentence"] = "hunter2 is at " + planted },
-		"unknown category":       func(r map[string]any) { r["category"] = "db01" },
-		"bad category":           func(r map[string]any) { r["category"] = planted },
-		"bad item id":            func(r map[string]any) { r["item_id"] = "s3cr3t@" + planted },
-		"wrong type":             func(r map[string]any) { r["facts"].(map[string]any)["task_count"] = "hunter2" },
-		"bad state":              func(r map[string]any) { r["state"] = planted },
+		"unknown envelope field":    func(r map[string]any) { r["host_"+planted] = "10.20.30.40" },
+		"unknown observation field": func(r map[string]any) { observed(r)["password_hunter2"] = "s3cr3t" },
+		"unknown fact":              func(r map[string]any) { facts(r)["password_hunter2"] = "s3cr3t" },
+		"unknown enum value":        func(r map[string]any) { facts(r)["source_kind"] = planted },
+		"unknown list value":        func(r map[string]any) { facts(r)["output_kinds"] = []any{"10.20.30.40"} },
+		"unlisted verb":             func(r map[string]any) { facts(r)["task_sentence"] = "hunter2 is at " + planted },
+		"unknown category":          func(r map[string]any) { observed(r)["category"] = "db01" },
+		"bad category":              func(r map[string]any) { observed(r)["category"] = planted },
+		"bad item id":               func(r map[string]any) { r["id"] = "s3cr3t@" + planted },
+		"bad lease":                 func(r map[string]any) { r["lease"] = "hunter2 " + planted },
+		"bad lane":                  func(r map[string]any) { r["lane"] = planted },
+		"bad expires":               func(r map[string]any) { r["expires"] = "10.20.30.40" },
+		"wrong type":                func(r map[string]any) { facts(r)["task_count"] = "hunter2" },
+		"bad state":                 func(r map[string]any) { r["state"] = planted },
 	}
 	for name, mutate := range mutations {
 		t.Run(name, func(t *testing.T) {
@@ -207,7 +215,7 @@ func TestErrorsNeverEchoTheInput(t *testing.T) {
 				}
 			}
 			// Outside the error, the only input text an outcome may repeat
-			// is a well-formed item ID and category.
+			// is a well-formed item identifier and category.
 			whole := string(contract.Encode(out))
 			for _, leak := range []string{"corp", "10.20.30.40", "hunter2", "s3cr3t"} {
 				if strings.Contains(whole, leak) {
@@ -229,7 +237,7 @@ func scored(id string, total int, ties ...int64) *contract.Outcome {
 // TestCompareAppliesTheTieBreakersInOrder builds candidates that differ in
 // exactly one place each and checks the order: total, then roadmap phase
 // fit, gap severity, low upkeep, small code footprint, community demand,
-// and last the item ID.
+// and last the item number.
 func TestCompareAppliesTheTieBreakersInOrder(t *testing.T) {
 	want := []*contract.Outcome{
 		scored("z-higher-total", 81, 0, 1, 1, 1, 0),
@@ -256,6 +264,12 @@ func TestCompareAppliesTheTieBreakersInOrder(t *testing.T) {
 			}
 		}
 	}
+	// With everything else equal the lower item number sorts first, by
+	// number and not by spelling: PA-9999 comes before PA-10000.
+	low, high := scored("PA-9999", 80, 1, 1, 1, 1, 1), scored("PA-10000", 80, 1, 1, 1, 1, 1)
+	if engine.Compare(low, high) >= 0 || engine.Compare(high, low) <= 0 {
+		t.Error("item numbers must be compared as numbers")
+	}
 	if engine.Compare(want[6], want[6]) != 0 {
 		t.Error("an outcome must compare equal to itself")
 	}
@@ -269,8 +283,11 @@ func TestRealTieBreak(t *testing.T) {
 	eng := newEngine(t)
 	raw := readFixture(t, "pricing/fixtures/build.input.json")
 	a := eng.Evaluate(raw)
-	b := eng.Evaluate(bytes.Replace(bytes.Replace(raw, []byte(`"community_demand": 14`), []byte(`"community_demand": 15`), 1),
-		[]byte(`"pricing-build"`), []byte(`"pricing-build-b"`), 1))
+	more := bytes.Replace(raw, []byte(`"community_demand": 14`), []byte(`"community_demand": 15`), 1)
+	if bytes.Equal(more, raw) {
+		t.Fatal("the fixture no longer has the value this test changes")
+	}
+	b := eng.Evaluate(more)
 	if *a.Total != *b.Total {
 		t.Fatal("the two candidates should have the same total")
 	}

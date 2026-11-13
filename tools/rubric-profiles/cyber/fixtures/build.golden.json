@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "cyber-build",
+  "id": "PA-1001",
   "state": "scored",
   "category": "cyber",
   "rules": {

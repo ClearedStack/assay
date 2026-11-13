@@ -188,7 +188,7 @@ func TestLoadRefusesBadRuleData(t *testing.T) {
 		{"duplicate key", "pricing/profile.yaml", "source_public: {type: bool}", "source_public: {type: bool}\n  source_public: {type: bool}", "already defined"},
 		{"match names another category", "pricing/match.yaml", "category: pricing", "category: prices", "folder"},
 		{"match names another state", "pricing/match.yaml", "state: observed", "state: scored", "match.state"},
-		{"match names another contract", "pricing/match.yaml", "contract_version: v1", "contract_version: v2", "contract_version"},
+		{"match names another contract", "pricing/match.yaml", "contract: v1", "contract: v2", "match.contract"},
 		{"recommendation bands overlap", "rubric.yaml", "total: {min: 55, max: 74}", "total: {min: 55, max: 75}", "exactly one"},
 		{"recommendation bands leave a hole", "rubric.yaml", "total: {min: 55, max: 74}", "total: {min: 56, max: 74}", "exactly one"},
 		{"recommendation on unknown factor", "rubric.yaml", "factor: {factor: gap, min: 2}", "factor: {factor: gaps, min: 2}", "unknown factor"},

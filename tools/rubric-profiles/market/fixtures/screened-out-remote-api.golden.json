@@ -1,8 +1,8 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "market-screened-out-remote-api",
-  "state": "screened-out",
+  "id": "PA-3010",
+  "state": "screened_out",
   "category": "market",
   "rules": {
     "rubric_version": 1,

@@ -25,13 +25,13 @@ func New(set *rubricprofiles.Set) *Engine {
 	return &Engine{set: set}
 }
 
-// Evaluate reads one observed record and returns its outcome. It never
-// fails: broken or unfamiliar input becomes an outcome that carries an
-// error.
+// Evaluate reads one lease reply, as Muster sends it, and returns the
+// outcome for the item in it. It never fails: broken or unfamiliar input
+// becomes an outcome that carries an error.
 func (e *Engine) Evaluate(raw []byte) *contract.Outcome {
-	out := &contract.Outcome{ContractVersion: contract.Version, Worker: contract.Worker}
+	out := &contract.Outcome{Contract: contract.Version, Worker: contract.Worker}
 
-	rec, perr := contract.ParseRecord(raw)
+	rec, perr := contract.ParseLease(raw)
 	out.ItemID = rec.ItemID
 	out.Category = rec.Category
 	if perr != nil {
@@ -122,8 +122,8 @@ func stop(out *contract.Outcome, e *errs.Error) *contract.Outcome {
 // sorts before b.
 //
 // The order is: higher total first; then each tie-breaker in turn, higher
-// value first; then the item ID, so that two candidates can never be left
-// in an undefined order.
+// value first; then the item number, lower first, so that two candidates can
+// never be left in an undefined order.
 func Compare(a, b *contract.Outcome) int {
 	if a.Total != nil && b.Total != nil && *a.Total != *b.Total {
 		if *a.Total > *b.Total {
@@ -139,6 +139,14 @@ func Compare(a, b *contract.Outcome) int {
 			}
 			return 1
 		}
+	}
+	// Identifiers are PA- and a number with no padding beyond four digits,
+	// so a shorter identifier is a lower number.
+	if len(a.ItemID) != len(b.ItemID) {
+		if len(a.ItemID) < len(b.ItemID) {
+			return -1
+		}
+		return 1
 	}
 	return strings.Compare(a.ItemID, b.ItemID)
 }

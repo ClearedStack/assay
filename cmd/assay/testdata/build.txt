@@ -1,4 +1,4 @@
-Item:     pricing-build
+Item:     PA-4001
 Category: pricing
 Rules:    rubric v1, profile pricing v1
 State:    scored

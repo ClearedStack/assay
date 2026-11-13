@@ -1,4 +1,4 @@
-Item:     pricing-link
+Item:     PA-4002
 Category: pricing
 Rules:    rubric v1, profile pricing v1
 State:    scored

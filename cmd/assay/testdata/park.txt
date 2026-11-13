@@ -1,4 +1,4 @@
-Item:     pricing-park
+Item:     PA-4003
 Category: pricing
 Rules:    rubric v1, profile pricing v1
 State:    scored

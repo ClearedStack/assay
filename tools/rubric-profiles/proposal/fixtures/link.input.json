@@ -1,32 +1,43 @@
 {
-  "contract_version": "v1",
-  "item_id": "proposal-link",
+  "lease": "PA-5002.1",
+  "kind": "item",
+  "id": "PA-5002",
   "state": "observed",
-  "category": "proposal",
-  "facts": {
-    "source_kind": "statute",
-    "source_public": true,
-    "source_precision": "defined_procedure",
-    "client_runtime": "browser_js",
-    "needs_backend": false,
-    "needs_remote_api": false,
-    "largest_input_kb": 5000,
-    "works_offline": true,
-    "needs_account": false,
-    "emits_tracking": false,
-    "connect_src_self": true,
-    "task_count": 1,
-    "task_sentence": "Count pages in each made-up volume against its limit.",
-    "output_kinds": [
-      "computed_number"
-    ],
-    "need_signals": 30,
-    "best_alternative": "complete",
-    "est_source_lines": 400,
-    "worked_examples": 9,
-    "reference_updates_per_year": 0,
-    "roadmap_phase_fit": 2,
-    "community_demand": 14,
-    "template_count": 1
+  "lane": "normal",
+  "attempt": 1,
+  "expires": "2026-01-05T09:01:00Z",
+  "results": {
+    "sextant": {
+      "category": "proposal",
+      "facts": {
+        "source_kind": "statute",
+        "source_public": true,
+        "source_precision": "defined_procedure",
+        "client_runtime": "browser_js",
+        "needs_backend": false,
+        "needs_remote_api": false,
+        "largest_input_kb": 5000,
+        "works_offline": true,
+        "needs_account": false,
+        "emits_tracking": false,
+        "connect_src_self": true,
+        "task_count": 1,
+        "task_sentence": "Count pages in each made-up volume against its limit.",
+        "output_kinds": [
+          "computed_number"
+        ],
+        "need_signals": 30,
+        "best_alternative": "complete",
+        "est_source_lines": 400,
+        "worked_examples": 9,
+        "reference_updates_per_year": 0,
+        "roadmap_phase_fit": 2,
+        "community_demand": 14,
+        "template_count": 1
+      }
+    },
+    "trawl": {
+      "source": "made-up source"
+    }
   }
 }

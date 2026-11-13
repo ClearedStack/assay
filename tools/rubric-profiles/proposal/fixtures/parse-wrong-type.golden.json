@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "proposal-parse-wrong-type",
+  "id": "PA-5016",
   "category": "proposal",
   "rules": {
     "rubric_version": 1,

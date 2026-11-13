@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "proposal-reject-floor",
+  "id": "PA-5005",
   "state": "scored",
   "category": "proposal",
   "rules": {

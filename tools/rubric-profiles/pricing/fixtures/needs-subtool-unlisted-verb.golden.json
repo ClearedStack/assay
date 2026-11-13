@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "pricing-needs-subtool-unlisted-verb",
+  "id": "PA-4019",
   "state": "needs_subtool",
   "category": "pricing",
   "rules": {

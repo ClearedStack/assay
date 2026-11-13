@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "market-reject",
+  "id": "PA-3004",
   "state": "scored",
   "category": "market",
   "rules": {

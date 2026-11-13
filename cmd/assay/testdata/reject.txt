@@ -1,4 +1,4 @@
-Item:     pricing-reject
+Item:     PA-4004
 Category: pricing
 Rules:    rubric v1, profile pricing v1
 State:    scored

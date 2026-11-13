@@ -1,31 +1,42 @@
 {
-  "contract_version": "v1",
-  "item_id": "pricing-parse-missing-fact",
+  "lease": "PA-4020.1",
+  "kind": "item",
+  "id": "PA-4020",
   "state": "observed",
-  "category": "pricing",
-  "facts": {
-    "source_kind": "far",
-    "source_public": true,
-    "source_precision": "exact_formula",
-    "client_runtime": "browser_js",
-    "needs_backend": false,
-    "needs_remote_api": false,
-    "largest_input_kb": 40,
-    "works_offline": true,
-    "needs_account": false,
-    "emits_tracking": false,
-    "connect_src_self": true,
-    "task_count": 1,
-    "task_sentence": "Compute a loaded hourly rate from made-up cost pools.",
-    "output_kinds": [
-      "computed_number"
-    ],
-    "need_signals": 27,
-    "best_alternative": "paid_only",
-    "est_source_lines": 650,
-    "reference_updates_per_year": 1,
-    "roadmap_phase_fit": 2,
-    "community_demand": 14,
-    "rate_tables": 2
+  "lane": "normal",
+  "attempt": 1,
+  "expires": "2026-01-05T09:01:00Z",
+  "results": {
+    "sextant": {
+      "category": "pricing",
+      "facts": {
+        "source_kind": "far",
+        "source_public": true,
+        "source_precision": "exact_formula",
+        "client_runtime": "browser_js",
+        "needs_backend": false,
+        "needs_remote_api": false,
+        "largest_input_kb": 40,
+        "works_offline": true,
+        "needs_account": false,
+        "emits_tracking": false,
+        "connect_src_self": true,
+        "task_count": 1,
+        "task_sentence": "Compute a loaded hourly rate from made-up cost pools.",
+        "output_kinds": [
+          "computed_number"
+        ],
+        "need_signals": 27,
+        "best_alternative": "paid_only",
+        "est_source_lines": 650,
+        "reference_updates_per_year": 1,
+        "roadmap_phase_fit": 2,
+        "community_demand": 14,
+        "rate_tables": 2
+      }
+    },
+    "trawl": {
+      "source": "made-up source"
+    }
   }
 }

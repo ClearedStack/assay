@@ -1,4 +1,4 @@
-// Package spool keeps finished outcomes on disk when Muster cannot take
+// Package spool keeps finished reports on disk when Muster cannot take
 // them, so that a hub restart loses no work.
 //
 // The spool directory (/var/spool/cs in the cluster) is the only place Assay
@@ -25,17 +25,17 @@ const (
 	maxEntryBytes = 2 << 20
 )
 
-// Spool is a directory of outcomes waiting to be handed to the hub.
+// Spool is a directory of reports waiting to be handed to the hub.
 type Spool struct {
 	dir string
 }
 
-// Entry is one waiting outcome. The outcome is stored as opaque bytes
-// (base64 in the file) so that what is delivered later is exactly what was
-// produced, to the byte.
+// Entry is one waiting report: the lease it closes, and the report itself
+// as opaque bytes (base64 in the file), so that what is delivered later is
+// exactly what was produced, to the byte.
 type Entry struct {
-	LeaseID string `json:"lease_id"`
-	Outcome []byte `json:"outcome"`
+	Lease   string `json:"lease"`
+	Payload []byte `json:"payload"`
 	name    string
 }
 
@@ -57,28 +57,28 @@ func Open(dir string) (*Spool, error) {
 	return &Spool{dir: dir}, nil
 }
 
-// Put saves an outcome for a lease. Saving the same lease twice keeps the
-// later outcome.
-func (s *Spool) Put(leaseID string, outcome []byte) error {
-	data, err := json.Marshal(Entry{LeaseID: leaseID, Outcome: outcome})
+// Put saves the report that closes a lease. A lease is closed by one call,
+// so saving the same lease twice keeps the later report.
+func (s *Spool) Put(lease string, payload []byte) error {
+	data, err := json.Marshal(Entry{Lease: lease, Payload: payload})
 	if err != nil {
-		return errors.New("the outcome could not be spooled")
+		return errors.New("the report could not be spooled")
 	}
-	name := fileName(leaseID)
+	name := fileName(lease)
 	tmp, err := os.CreateTemp(s.dir, tempPrefix+"*")
 	if err != nil {
-		return errors.New("the outcome could not be spooled")
+		return errors.New("the report could not be spooled")
 	}
 	_, werr := tmp.Write(data)
 	serr := tmp.Sync()
 	cerr := tmp.Close()
 	if werr != nil || serr != nil || cerr != nil {
 		_ = os.Remove(tmp.Name())
-		return errors.New("the outcome could not be spooled")
+		return errors.New("the report could not be spooled")
 	}
 	if err := os.Rename(tmp.Name(), filepath.Join(s.dir, name)); err != nil {
 		_ = os.Remove(tmp.Name())
-		return errors.New("the outcome could not be spooled")
+		return errors.New("the report could not be spooled")
 	}
 	return nil
 }
@@ -103,7 +103,7 @@ func (s *Spool) List() ([]Entry, error) {
 		}
 		var e Entry
 		data, err := os.ReadFile(path)
-		if info.Size() > maxEntryBytes || err != nil || json.Unmarshal(data, &e) != nil || e.LeaseID == "" || len(e.Outcome) == 0 {
+		if info.Size() > maxEntryBytes || err != nil || json.Unmarshal(data, &e) != nil || e.Lease == "" || len(e.Payload) == 0 {
 			_ = os.Remove(path)
 			continue
 		}
@@ -116,18 +116,18 @@ func (s *Spool) List() ([]Entry, error) {
 // Remove deletes an entry once the hub has taken it.
 func (s *Spool) Remove(e Entry) error {
 	if e.name == "" {
-		e.name = fileName(e.LeaseID)
+		e.name = fileName(e.Lease)
 	}
 	if err := os.Remove(filepath.Join(s.dir, e.name)); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return errors.New("a spooled outcome could not be removed")
+		return errors.New("a spooled report could not be removed")
 	}
 	return nil
 }
 
-// fileName derives a safe file name from a lease ID. The ID comes from the
+// fileName derives a safe file name from a lease. The lease comes from the
 // hub, so it is hashed instead of being trusted as a path.
-func fileName(leaseID string) string {
-	sum := sha256.Sum256([]byte(leaseID))
+func fileName(lease string) string {
+	sum := sha256.Sum256([]byte(lease))
 	return hex.EncodeToString(sum[:16]) + entrySuffix
 }
 

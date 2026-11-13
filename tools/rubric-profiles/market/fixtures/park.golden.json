@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "market-park",
+  "id": "PA-3003",
   "state": "scored",
   "category": "market",
   "rules": {

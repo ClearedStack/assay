@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "devsecops-reject",
+  "id": "PA-2004",
   "state": "scored",
   "category": "devsecops",
   "rules": {

@@ -1,6 +1,6 @@
 # The matching rule: which records this profile takes.
 profile: cyber
 match:
-  contract_version: v1
+  contract: v1
   state: observed
   category: cyber

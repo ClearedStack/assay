@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "cyber-parse-wrong-type",
+  "id": "PA-1017",
   "category": "cyber",
   "rules": {
     "rubric_version": 1,

@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "match-parse-missing-facts",
+  "id": "PA-9025",
   "category": "pricing",
   "error": {
     "code": "E_PARSE",

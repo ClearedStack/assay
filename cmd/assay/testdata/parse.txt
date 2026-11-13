@@ -1,4 +1,4 @@
-Item:     pricing-parse-wrong-type
+Item:     PA-4021
 Category: pricing
 Rules:    rubric v1, profile pricing v1
 State:    (none: the record could not be read)

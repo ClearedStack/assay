@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "proposal-build-split-merge",
+  "id": "PA-5006",
   "state": "scored",
   "category": "proposal",
   "rules": {

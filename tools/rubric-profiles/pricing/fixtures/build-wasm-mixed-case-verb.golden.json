@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "pricing-build-wasm-mixed-case-verb",
+  "id": "PA-4025",
   "state": "scored",
   "category": "pricing",
   "rules": {

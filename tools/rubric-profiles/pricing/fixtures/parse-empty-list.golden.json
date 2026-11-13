@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "pricing-parse-empty-list",
+  "id": "PA-4023",
   "category": "pricing",
   "rules": {
     "rubric_version": 1,

@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "proposal-needs-subtool-unknown-fact",
+  "id": "PA-5012",
   "state": "needs_subtool",
   "category": "proposal",
   "rules": {

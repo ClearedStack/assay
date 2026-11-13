@@ -10,22 +10,23 @@ import (
 // Worker is this component's name in the naming registry.
 const Worker = "assay"
 
-// Outbound states, spelled exactly as SPEC.md spells them.
+// Outbound states, spelled as Muster's contract spells them.
 const (
-	StateScreenedOut  = "screened-out"
+	StateScreenedOut  = "screened_out"
 	StateScored       = "scored"
 	StateNeedsSubtool = "needs_subtool"
 )
 
-// Outcome is what Assay hands back for one item. Everything in it is meant
-// to be public.
+// Outcome is what Assay decides for one item. Everything in it is meant to
+// be public.
 //
-// State is empty for an E_PARSE failure: SPEC.md lists no outbound state for
-// broken data, so the next state is left for Muster to choose.
+// An outcome that is scored or screened out is sent to Muster whole, as the result
+// of the complete call. State is empty for an E_PARSE failure: the item
+// keeps the state it had, and Assay reports it with the fail call.
 type Outcome struct {
-	ContractVersion  string         `json:"contract_version"`
+	Contract         string         `json:"contract"`
 	Worker           string         `json:"worker"`
-	ItemID           string         `json:"item_id,omitempty"`
+	ItemID           string         `json:"id,omitempty"`
 	State            string         `json:"state,omitempty"`
 	Category         string         `json:"category,omitempty"`
 	Rules            *RulesRef      `json:"rules,omitempty"`

@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "market-build",
+  "id": "PA-3001",
   "state": "scored",
   "category": "market",
   "rules": {

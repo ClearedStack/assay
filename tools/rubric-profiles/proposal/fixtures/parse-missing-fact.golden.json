@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "proposal-parse-missing-fact",
+  "id": "PA-5015",
   "category": "proposal",
   "rules": {
     "rubric_version": 1,

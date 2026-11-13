@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "match-matched-pricing",
+  "id": "PA-9001",
   "state": "scored",
   "category": "pricing",
   "rules": {

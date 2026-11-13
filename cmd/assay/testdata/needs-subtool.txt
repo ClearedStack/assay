@@ -1,4 +1,4 @@
-Item:     pricing-needs-subtool-unlisted-verb
+Item:     PA-4019
 Category: pricing
 Rules:    rubric v1, profile pricing v1
 State:    needs_subtool

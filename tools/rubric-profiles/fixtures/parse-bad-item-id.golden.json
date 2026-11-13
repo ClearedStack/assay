@@ -1,10 +1,10 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
   "error": {
     "code": "E_PARSE",
     "reason": "invalid_value",
-    "where": "item_id",
-    "fingerprint": "6c66c66853ce8157"
+    "where": "id",
+    "fingerprint": "2937634d433c6f45"
   }
 }

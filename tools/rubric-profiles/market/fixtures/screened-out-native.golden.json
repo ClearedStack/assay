@@ -1,8 +1,8 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "market-screened-out-native",
-  "state": "screened-out",
+  "id": "PA-3011",
+  "state": "screened_out",
   "category": "market",
   "rules": {
     "rubric_version": 1,

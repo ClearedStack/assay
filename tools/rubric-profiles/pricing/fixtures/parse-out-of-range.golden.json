@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "pricing-parse-out-of-range",
+  "id": "PA-4022",
   "category": "pricing",
   "rules": {
     "rubric_version": 1,

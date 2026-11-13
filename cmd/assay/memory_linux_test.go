@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ClearedStack/assay/internal/contract"
 	"github.com/ClearedStack/assay/internal/muster"
 )
 
@@ -19,7 +20,7 @@ const budgetKiB = 30 * 1024
 
 // TestWorkerStaysWithinTheMemoryBudget builds the real binary the way ko
 // does, runs it as a worker against a stand-in Muster served over HTTP,
-// pushes several thousand records through it (good, screened-out, paused and
+// pushes several thousand leases through it (scored, screened out, paused and
 // broken), and reads the process's peak resident memory from the kernel.
 //
 // It also checks the two other things a pod needs from the process: that it
@@ -36,31 +37,47 @@ func TestWorkerStaysWithinTheMemoryBudget(t *testing.T) {
 		t.Fatalf("build failed: %v\n%s", err, out)
 	}
 
-	inputs, err := filepath.Glob(filepath.Join(fixtures, "*/fixtures/*.input.json"))
-	if err != nil || len(inputs) == 0 {
+	paths, err := filepath.Glob(filepath.Join(fixtures, "*/fixtures/*.input.json"))
+	if err != nil || len(paths) == 0 {
 		t.Fatal("no fixtures found")
 	}
 	more, _ := filepath.Glob(filepath.Join(fixtures, "fixtures/*.input.json"))
-	inputs = append(inputs, more...)
-	hub := muster.NewMemory()
-	const total = 6000
-	for i := 0; i < total; i++ {
-		data, err := os.ReadFile(inputs[i%len(inputs)])
+	// Only replies Assay can answer: one with no readable lease has no call
+	// to make, and the worker rightly backs off after it.
+	var inputs [][]byte
+	for _, path := range append(paths, more...) {
+		data, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		hub.Add(muster.Lanes[i%3], data)
+		if _, ok := contract.LeaseID(data); ok {
+			inputs = append(inputs, data)
+		}
 	}
-	// One record just under the size limit, to show a large record does not
-	// blow the budget either.
-	big := []byte(`{"contract_version":"v1","item_id":"big","state":"observed","category":"pricing","facts":{"padding":"`)
+	if len(inputs) < 100 {
+		t.Fatalf("only %d usable fixtures", len(inputs))
+	}
+	hub := muster.NewMemory()
+	const total = 6000
+	for i := 0; i < total; i++ {
+		hub.Add(inputs[i%len(inputs)])
+	}
+	// One lease reply just under the size limit, to show a large one does
+	// not blow the budget either.
+	big := []byte(`{"lease":"PA-9999.1","kind":"item","id":"PA-9999","state":"observed","lane":"urgent","attempt":1,` +
+		`"expires":"2026-01-05T09:01:00Z","results":{"sextant":{"category":"pricing","facts":{"padding":"`)
 	for len(big) < 1000000 {
 		big = append(big, "made-up filler "...)
 	}
-	hub.Add(muster.Urgent, append(big, `"}}`...))
+	hub.Add(append(big, `"}}}}`...))
 
-	srv := httptest.NewServer(muster.Handler(hub, ""))
+	const token = "made-up-token"
+	srv := httptest.NewServer(hub.Handler(token))
 	defer srv.Close()
+	tokenPath := filepath.Join(t.TempDir(), "token")
+	if err := os.WriteFile(tokenPath, []byte(token), 0o600); err != nil {
+		t.Fatal(err)
+	}
 
 	spoolDir := filepath.Join(t.TempDir(), "spool")
 	cmd := exec.Command(bin, "run")
@@ -69,7 +86,7 @@ func TestWorkerStaysWithinTheMemoryBudget(t *testing.T) {
 		"CONTRACT_VERSION=v1",
 		"MUSTER_URL=" + srv.URL,
 		"ASSAY_SPOOL_DIR=" + spoolDir,
-		"ASSAY_TOKEN_FILE=",
+		"ASSAY_TOKEN_FILE=" + tokenPath,
 		"ASSAY_POLL_INTERVAL=20ms",
 		"GOMEMLIMIT=24MiB", // as set in deploy/assay.yaml
 	}

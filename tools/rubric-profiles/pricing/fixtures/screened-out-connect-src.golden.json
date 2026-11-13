@@ -1,8 +1,8 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "pricing-screened-out-connect-src",
-  "state": "screened-out",
+  "id": "PA-4016",
+  "state": "screened_out",
   "category": "pricing",
   "rules": {
     "rubric_version": 1,

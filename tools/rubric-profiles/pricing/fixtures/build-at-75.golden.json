@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "pricing-build-at-75",
+  "id": "PA-4007",
   "state": "scored",
   "category": "pricing",
   "rules": {

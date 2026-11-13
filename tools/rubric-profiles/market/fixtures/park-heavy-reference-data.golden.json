@@ -1,7 +1,7 @@
 {
-  "contract_version": "v1",
+  "contract": "v1",
   "worker": "assay",
-  "item_id": "market-park-heavy-reference-data",
+  "id": "PA-3007",
   "state": "scored",
   "category": "market",
   "rules": {

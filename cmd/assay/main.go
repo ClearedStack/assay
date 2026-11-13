@@ -1,7 +1,7 @@
 // Command assay is stage 03 of the ClearedStack pipeline. It screens each
 // candidate against the knockout gates and scores it on the rubric.
 //
-//	assay eval [-format text|json] FILE   evaluate one observed record
+//	assay eval [-format text|json] FILE   evaluate one lease reply
 //	assay rank FILE...                    evaluate several and order them
 //	assay run                             poll Muster as a worker
 //	assay run -standin DIR                run the worker against a stand-in
@@ -41,13 +41,15 @@ const (
 const usage = `assay screens a candidate against the knockout gates and scores it on the rubric.
 
 Usage:
-  assay eval [-format text|json] FILE   evaluate one observed record ("-" reads standard input)
-  assay rank FILE...                    evaluate several records and print the scored ones in order
+  assay eval [-format text|json] FILE   evaluate one lease reply ("-" reads standard input)
+  assay rank FILE...                    evaluate several and print the scored ones in order
   assay run                             poll Muster as a worker (configured by environment)
-  assay run -standin DIR                run the worker over the records in DIR, with no Muster
+  assay run -standin DIR                run the worker over the lease replies in DIR, with no Muster
+
+A lease reply is the JSON Muster answers POST /v1/lease with.
   assay version                         print the version
 
-Exit codes for eval: 0 scored or screened-out, 3 E_NEEDS_SUBTOOL, 4 E_PARSE.`
+Exit codes for eval: 0 scored or screened_out, 3 E_NEEDS_SUBTOOL, 4 E_PARSE.`
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -106,7 +108,7 @@ func readRecord(path string, stdin io.Reader) ([]byte, error) {
 		r = f
 	}
 	// One byte over the limit is enough for the parser to refuse it.
-	return io.ReadAll(io.LimitReader(r, contract.MaxRecordBytes+1))
+	return io.ReadAll(io.LimitReader(r, contract.MaxLeaseBytes+1))
 }
 
 func cmdEval(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
@@ -175,7 +177,7 @@ func cmdRank(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	sort.SliceStable(scored, func(i, j int) bool { return engine.Compare(scored[i], scored[j]) < 0 })
-	sort.SliceStable(others, func(i, j int) bool { return others[i].ItemID < others[j].ItemID })
+	sort.SliceStable(others, func(i, j int) bool { return engine.Compare(others[i], others[j]) < 0 })
 
 	tw := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
 	say(tw, "Rank\tItem\tTotal\tRecommendation\tTie-breakers")
