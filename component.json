@@ -1,0 +1,23 @@
+{
+  "slug": "assay",
+  "name": "Assay",
+  "formerly": "cs-03-evaluate",
+  "kind": "worker",
+  "stage": 3,
+  "namespace": "cs-workers",
+  "responsibility": "Screens each candidate against the knockout gates and scores it on the rubric.",
+  "interfaces": [
+    "Leases observed records from Muster",
+    "Returns a pass or fail on each gate, a score and a recommendation"
+  ],
+  "repository": "assay",
+  "image": "assay",
+  "dependsOn": [
+    "muster"
+  ],
+  "memory": "30 MiB",
+  "version": "v0.1.0-draft",
+  "subTools": [
+    "rubric-profiles"
+  ]
+}
