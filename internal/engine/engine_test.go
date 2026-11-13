@@ -302,7 +302,7 @@ func TestRealTieBreak(t *testing.T) {
 // the moment, or a model. This is rule 3 of the build prompt, checked.
 func TestRulePackagesCannotReachOutside(t *testing.T) {
 	forbidden := []string{"net", "net/http", "time", "math/rand", "math/rand/v2", "crypto/rand", "os", "os/exec", "syscall", "runtime", "plugin", "unsafe"}
-	dirs := []string{".", "../contract", "../errs", "../../tools", "../../tools/rubric-profiles"}
+	dirs := []string{".", "../contract", "../errs", "../yamlite", "../../tools", "../../tools/rubric-profiles"}
 	for _, dir := range dirs {
 		pkgs, err := parser.ParseDir(token.NewFileSet(), dir, func(info os.FileInfo) bool {
 			return !strings.HasSuffix(info.Name(), "_test.go")

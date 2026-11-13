@@ -4,10 +4,7 @@
 package assay_test
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -15,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.yaml.in/yaml/v3"
+	"github.com/ClearedStack/assay/internal/yamlite"
 )
 
 type component struct {
@@ -46,18 +43,17 @@ func readManifests(t *testing.T) map[string]map[string]any {
 	if err != nil {
 		t.Fatal(err)
 	}
+	parsed, err := yamlite.ParseAll(data)
+	if err != nil {
+		t.Fatal(err)
+	}
 	docs := map[string]map[string]any{}
-	dec := yaml.NewDecoder(bytes.NewReader(data))
-	for {
-		var doc map[string]any
-		err := dec.Decode(&doc)
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
+	for _, n := range parsed {
+		doc := n.Value().(map[string]any)
 		docs[doc["kind"].(string)] = doc
+	}
+	if len(docs) != 3 {
+		t.Fatalf("want a ServiceAccount, a Deployment and a NetworkPolicy, got %d documents", len(docs))
 	}
 	return docs
 }
@@ -219,30 +215,77 @@ func TestNoDockerfile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var cfg struct {
-		Builds []struct {
-			Main string `yaml:"main"`
-		} `yaml:"builds"`
+	cfg, err := yamlite.Parse(ko)
+	if err != nil {
+		t.Fatalf(".ko.yaml: %v", err)
 	}
-	if err := yaml.Unmarshal(ko, &cfg); err != nil || len(cfg.Builds) != 1 || cfg.Builds[0].Main != "./cmd/assay" {
-		t.Errorf(".ko.yaml must build ./cmd/assay: %v", err)
+	builds, _ := cfg.Value().(map[string]any)["builds"].([]any)
+	if len(builds) != 1 || at(t, builds[0], "main") != "./cmd/assay" {
+		t.Errorf(".ko.yaml must build ./cmd/assay and nothing else")
 	}
 }
 
-func TestOneDependencyWithItsNoticeKept(t *testing.T) {
+// TestStandardLibraryOnly holds the repository to having no dependency at
+// all: go.mod requires nothing, and no Go file imports a package from
+// outside the standard library and this module.
+func TestStandardLibraryOnly(t *testing.T) {
 	gomod, err := os.ReadFile("go.mod")
 	if err != nil {
 		t.Fatal(err)
 	}
-	requires := regexp.MustCompile(`(?m)^\s*(?:require\s+)?([a-z0-9./-]+\.[a-z0-9./-]+)\s+v\S+`).FindAllStringSubmatch(string(gomod), -1)
-	if len(requires) != 1 || requires[0][1] != "go.yaml.in/yaml/v3" {
-		t.Fatalf("the only dependency should be the YAML library; go.mod requires %v", requires)
+	if strings.Contains(string(gomod), "require") {
+		t.Errorf("go.mod must require nothing:\n%s", gomod)
 	}
-	for _, name := range []string{"LICENSE", "NOTICE"} {
-		data, err := os.ReadFile(filepath.Join("third_party/go.yaml.in/yaml/v3", name))
-		if err != nil || len(data) == 0 {
-			t.Errorf("the dependency's %s must be kept in third_party: %v", name, err)
+	const module = "github.com/ClearedStack/assay"
+	if !strings.Contains(string(gomod), "module "+module+"\n") {
+		t.Fatalf("unexpected module path in go.mod")
+	}
+	importLine := regexp.MustCompile(`^\s*(?:import\s+)?(?:[A-Za-z_.][A-Za-z0-9_]*\s+)?"([^"]+)"\s*$`)
+	files := 0
+	err = filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
+		if d.IsDir() && (d.Name() == ".git" || d.Name() == "third_party") {
+			return filepath.SkipDir
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".go") {
+			return nil
+		}
+		files++
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		inBlock := false
+		for _, line := range strings.Split(string(data), "\n") {
+			trimmed := strings.TrimSpace(line)
+			switch {
+			case trimmed == "import (":
+				inBlock = true
+				continue
+			case inBlock && trimmed == ")":
+				inBlock = false
+				continue
+			case !inBlock && !strings.HasPrefix(trimmed, "import "):
+				continue
+			}
+			m := importLine.FindStringSubmatch(line)
+			if m == nil {
+				continue
+			}
+			first := strings.Split(m[1], "/")[0]
+			if strings.Contains(first, ".") && !strings.HasPrefix(m[1], module) {
+				t.Errorf("%s imports %q, which is outside the standard library", path, m[1])
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if files < 20 {
+		t.Fatalf("only %d Go files were checked", files)
 	}
 	license, err := os.ReadFile("LICENSE")
 	if err != nil || !strings.HasPrefix(string(license), "MIT License") {
@@ -273,14 +316,14 @@ func TestNamesComeFromTheRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var reg struct {
-		SubTools []struct {
-			Name string `yaml:"name"`
-			Path string `yaml:"path"`
-		} `yaml:"sub_tools"`
-	}
-	if err := yaml.Unmarshal(registry, &reg); err != nil {
+	type entry struct{ Name, Path string }
+	var reg struct{ SubTools []entry }
+	root, err := yamlite.Parse(registry)
+	if err != nil {
 		t.Fatal(err)
+	}
+	for _, n := range root.Read("sub_tools").List("sub_tools") {
+		reg.SubTools = append(reg.SubTools, entry{Name: n.Map["name"].Str, Path: n.Map["path"].Str})
 	}
 	if len(reg.SubTools) != len(c.SubTools) {
 		t.Fatalf("tools/registry.yaml lists %d sub-tools, component.json %d", len(reg.SubTools), len(c.SubTools))

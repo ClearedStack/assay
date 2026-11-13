@@ -19,6 +19,8 @@ package rubricprofiles
 import (
 	"fmt"
 	"regexp"
+
+	"github.com/ClearedStack/assay/internal/yamlite"
 )
 
 var idPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
@@ -39,21 +41,21 @@ type Rubric struct {
 
 // GateDef names one knockout gate.
 type GateDef struct {
-	ID   string `yaml:"id"`
-	Name string `yaml:"name"`
+	ID   string
+	Name string
 }
 
 // FactorDef names one rubric factor and gives its weight.
 type FactorDef struct {
-	ID     string `yaml:"id"`
-	Name   string `yaml:"name"`
-	Weight int    `yaml:"weight"`
+	ID     string
+	Name   string
+	Weight int
 }
 
 // Bound is an inclusive range. A nil end is open.
 type Bound struct {
-	Min *int `yaml:"min"`
-	Max *int `yaml:"max"`
+	Min *int
+	Max *int
 }
 
 func (b Bound) holds(v int) bool {
@@ -62,9 +64,9 @@ func (b Bound) holds(v int) bool {
 
 // FactorRange is a range on one factor's rating.
 type FactorRange struct {
-	Factor string `yaml:"factor"`
-	Min    *int   `yaml:"min"`
-	Max    *int   `yaml:"max"`
+	Factor string
+	Min    *int
+	Max    *int
 }
 
 func (r FactorRange) holds(ratings map[string]int) bool {
@@ -74,9 +76,9 @@ func (r FactorRange) holds(ratings map[string]int) bool {
 // Recommendation is one preliminary recommendation and the condition for it:
 // a range on the total and, optionally, a range on one factor.
 type Recommendation struct {
-	Name   string       `yaml:"name"`
-	Total  Bound        `yaml:"total"`
-	Factor *FactorRange `yaml:"factor"`
+	Name   string
+	Total  Bound
+	Factor *FactorRange
 }
 
 func (r Recommendation) holds(total int, ratings map[string]int) bool {
@@ -86,42 +88,106 @@ func (r Recommendation) holds(total int, ratings map[string]int) bool {
 // TieBreakerDef is one tie-breaker. Its value is either a factor's rating or
 // a whole-number fact from the record; higher sorts first.
 type TieBreakerDef struct {
-	ID     string `yaml:"id"`
-	Name   string `yaml:"name"`
-	Factor string `yaml:"factor"`
-	Fact   string `yaml:"fact"`
+	ID     string
+	Name   string
+	Factor string
+	Fact   string
 }
 
-type rubricYAML struct {
-	Version         int              `yaml:"version"`
-	Rating          Bound            `yaml:"rating"`
-	Gates           []GateDef        `yaml:"gates"`
-	Factors         []FactorDef      `yaml:"factors"`
-	Recommendations []Recommendation `yaml:"recommendations"`
-	SplitMerge      []FactorRange    `yaml:"split_merge_review"`
-	TieBreakers     []TieBreakerDef  `yaml:"tie_breakers"`
+// readBound reads {min: .., max: ..}. Either end may be left out.
+func readBound(n *yamlite.Node) (Bound, error) {
+	r := n.Read("min", "max")
+	b := Bound{Min: toInt(r.OptInt("min")), Max: toInt(r.OptInt("max"))}
+	return b, r.Err()
+}
+
+// readFactorRange reads {factor: .., min: .., max: ..}.
+func readFactorRange(n *yamlite.Node) (FactorRange, error) {
+	r := n.Read("factor", "min", "max")
+	fr := FactorRange{Factor: r.String("factor"), Min: toInt(r.OptInt("min")), Max: toInt(r.OptInt("max"))}
+	return fr, r.Err()
+}
+
+func toInt(v *int64) *int {
+	if v == nil {
+		return nil
+	}
+	i := int(*v)
+	return &i
 }
 
 func parseRubric(data []byte) (*Rubric, error) {
-	var y rubricYAML
-	if err := decodeStrict(data, &y); err != nil {
+	root, err := yamlite.Parse(data)
+	if err != nil {
 		return nil, err
 	}
-	if y.Version < 1 {
+	top := root.Read("version", "rating", "gates", "factors", "recommendations", "split_merge_review", "tie_breakers")
+	r := &Rubric{Version: int(top.Int("version"))}
+	ratingNode := top.Node("rating")
+	gateNodes, factorNodes := top.List("gates"), top.List("factors")
+	recNodes, splitNodes, tieNodes := top.List("recommendations"), top.List("split_merge_review"), top.List("tie_breakers")
+	if err := top.Err(); err != nil {
+		return nil, err
+	}
+
+	if r.Version < 1 {
 		return nil, fmt.Errorf("version must be 1 or more")
 	}
-	if y.Rating.Min == nil || y.Rating.Max == nil || *y.Rating.Min < 1 || *y.Rating.Max <= *y.Rating.Min {
+	rating, err := readBound(ratingNode)
+	if err != nil {
+		return nil, err
+	}
+	if rating.Min == nil || rating.Max == nil || *rating.Min < 1 || *rating.Max <= *rating.Min {
 		return nil, fmt.Errorf("rating needs a min of 1 or more and a larger max")
 	}
-	r := &Rubric{
-		Version:         y.Version,
-		RatingMin:       *y.Rating.Min,
-		RatingMax:       *y.Rating.Max,
-		Gates:           y.Gates,
-		Factors:         y.Factors,
-		Recommendations: y.Recommendations,
-		SplitMerge:      y.SplitMerge,
-		TieBreakers:     y.TieBreakers,
+	r.RatingMin, r.RatingMax = *rating.Min, *rating.Max
+
+	for _, n := range gateNodes {
+		f := n.Read("id", "name")
+		r.Gates = append(r.Gates, GateDef{ID: f.String("id"), Name: f.String("name")})
+		if err := f.Err(); err != nil {
+			return nil, err
+		}
+	}
+	for _, n := range factorNodes {
+		f := n.Read("id", "name", "weight")
+		r.Factors = append(r.Factors, FactorDef{ID: f.String("id"), Name: f.String("name"), Weight: int(f.Int("weight"))})
+		if err := f.Err(); err != nil {
+			return nil, err
+		}
+	}
+	for _, n := range recNodes {
+		f := n.Read("name", "total", "factor")
+		rec := Recommendation{Name: f.String("name")}
+		totalNode, factorNode := f.Node("total"), f.OptNode("factor")
+		if err := f.Err(); err != nil {
+			return nil, err
+		}
+		if rec.Total, err = readBound(totalNode); err != nil {
+			return nil, err
+		}
+		if factorNode != nil {
+			fr, err := readFactorRange(factorNode)
+			if err != nil {
+				return nil, err
+			}
+			rec.Factor = &fr
+		}
+		r.Recommendations = append(r.Recommendations, rec)
+	}
+	for _, n := range splitNodes {
+		fr, err := readFactorRange(n)
+		if err != nil {
+			return nil, err
+		}
+		r.SplitMerge = append(r.SplitMerge, fr)
+	}
+	for _, n := range tieNodes {
+		f := n.Read("id", "name", "factor", "fact")
+		r.TieBreakers = append(r.TieBreakers, TieBreakerDef{ID: f.String("id"), Name: f.String("name"), Factor: f.OptString("factor"), Fact: f.OptString("fact")})
+		if err := f.Err(); err != nil {
+			return nil, err
+		}
 	}
 
 	if len(r.Gates) == 0 {

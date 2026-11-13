@@ -10,6 +10,7 @@ import (
 
 	"github.com/ClearedStack/assay/internal/contract"
 	"github.com/ClearedStack/assay/internal/errs"
+	"github.com/ClearedStack/assay/internal/yamlite"
 )
 
 var (
@@ -80,78 +81,185 @@ type GateDecision struct {
 	Rule   int
 }
 
+// The shapes below are what a profile file holds before it is checked.
 type factYAML struct {
-	Type      string   `yaml:"type"`
-	Values    []string `yaml:"values"`
-	Min       *int64   `yaml:"min"`
-	Max       *int64   `yaml:"max"`
-	MaxLength *int     `yaml:"max_length"`
+	Type      string
+	Values    []string
+	Min       *int64
+	Max       *int64
+	MaxLength *int
 }
 
 type condYAML struct {
-	Eq          any      `yaml:"eq"`
-	Gte         *int64   `yaml:"gte"`
-	Lte         *int64   `yaml:"lte"`
-	In          []string `yaml:"in"`
-	AnyIn       []string `yaml:"any_in"`
-	AllIn       []string `yaml:"all_in"`
-	FirstWordIn []string `yaml:"first_word_in"`
+	Eq          any // true, false or a whole number; nil when absent
+	Gte         *int64
+	Lte         *int64
+	In          []string
+	AnyIn       []string
+	AllIn       []string
+	FirstWordIn []string
 }
 
 type gateRowYAML struct {
-	When   map[string]condYAML `yaml:"when"`
-	Pass   *bool               `yaml:"pass"`
-	Reason string              `yaml:"reason"`
+	When   map[string]condYAML
+	Pass   *bool
+	Reason string
 }
 
 type factorRowYAML struct {
-	When   map[string]condYAML `yaml:"when"`
-	Rating *int                `yaml:"rating"`
+	When   map[string]condYAML
+	Rating *int
 }
 
 type profileYAML struct {
-	Profile string                     `yaml:"profile"`
-	Version int                        `yaml:"version"`
-	Facts   map[string]factYAML        `yaml:"facts"`
-	Gates   map[string][]gateRowYAML   `yaml:"gates"`
-	Factors map[string][]factorRowYAML `yaml:"factors"`
+	Profile string
+	Version int
+	Facts   map[string]factYAML
+	Gates   map[string][]gateRowYAML
+	Factors map[string][]factorRowYAML
 }
 
-type matchYAML struct {
-	Profile string `yaml:"profile"`
-	Match   struct {
-		Contract string `yaml:"contract"`
-		State    string `yaml:"state"`
-		Category string `yaml:"category"`
-	} `yaml:"match"`
+// readProfile reads a profile file into its raw shape. A key that is not
+// part of the format is an error wherever it appears.
+func readProfile(data []byte) (*profileYAML, error) {
+	root, err := yamlite.Parse(data)
+	if err != nil {
+		return nil, err
+	}
+	top := root.Read("profile", "version", "facts", "gates", "factors")
+	y := &profileYAML{
+		Profile: top.String("profile"), Version: int(top.Int("version")),
+		Facts: map[string]factYAML{}, Gates: map[string][]gateRowYAML{}, Factors: map[string][]factorRowYAML{},
+	}
+	factNames, facts := top.Map("facts")
+	gateNames, gates := top.Map("gates")
+	factorNames, factors := top.Map("factors")
+	if err := top.Err(); err != nil {
+		return nil, err
+	}
+
+	for _, name := range factNames {
+		f := facts[name].Read("type", "values", "min", "max", "max_length")
+		fy := factYAML{Type: f.String("type"), Values: f.OptStrings("values"), Min: f.OptInt("min"), Max: f.OptInt("max")}
+		if v := f.OptInt("max_length"); v != nil {
+			n := int(*v)
+			fy.MaxLength = &n
+		}
+		if err := f.Err(); err != nil {
+			return nil, fmt.Errorf("fact %q: %w", name, err)
+		}
+		y.Facts[name] = fy
+	}
+
+	for _, name := range gateNames {
+		y.Gates[name] = []gateRowYAML{}
+		if gates[name].Kind != yamlite.Seq {
+			return nil, fmt.Errorf("gate %q: line %d: expected a list of rows", name, gates[name].Line)
+		}
+		for i, rowNode := range gates[name].Items {
+			f := rowNode.Read("when", "pass", "reason")
+			row := gateRowYAML{Pass: f.OptBool("pass"), Reason: f.OptString("reason")}
+			_, when := f.Map("when")
+			if err := f.Err(); err != nil {
+				return nil, fmt.Errorf("gate %q row %d: %w", name, i+1, err)
+			}
+			if row.When, err = readWhen(when); err != nil {
+				return nil, fmt.Errorf("gate %q row %d: %w", name, i+1, err)
+			}
+			y.Gates[name] = append(y.Gates[name], row)
+		}
+	}
+
+	for _, name := range factorNames {
+		y.Factors[name] = []factorRowYAML{}
+		if factors[name].Kind != yamlite.Seq {
+			return nil, fmt.Errorf("factor %q: line %d: expected a list of rows", name, factors[name].Line)
+		}
+		for i, rowNode := range factors[name].Items {
+			f := rowNode.Read("when", "rating")
+			row := factorRowYAML{}
+			if v := f.OptInt("rating"); v != nil {
+				n := int(*v)
+				row.Rating = &n
+			}
+			_, when := f.Map("when")
+			if err := f.Err(); err != nil {
+				return nil, fmt.Errorf("factor %q row %d: %w", name, i+1, err)
+			}
+			if row.When, err = readWhen(when); err != nil {
+				return nil, fmt.Errorf("factor %q row %d: %w", name, i+1, err)
+			}
+			y.Factors[name] = append(y.Factors[name], row)
+		}
+	}
+	return y, nil
+}
+
+// readWhen reads the conditions of one row: fact name to operators.
+func readWhen(when map[string]*yamlite.Node) (map[string]condYAML, error) {
+	out := make(map[string]condYAML, len(when))
+	for fact, n := range when {
+		f := n.Read("eq", "gte", "lte", "in", "any_in", "all_in", "first_word_in")
+		c := condYAML{
+			Gte: f.OptInt("gte"), Lte: f.OptInt("lte"),
+			In: f.OptStrings("in"), AnyIn: f.OptStrings("any_in"), AllIn: f.OptStrings("all_in"),
+			FirstWordIn: f.OptStrings("first_word_in"),
+		}
+		if eq := f.OptNode("eq"); eq != nil {
+			switch eq.Kind {
+			case yamlite.Bool:
+				c.Eq = eq.Bool
+			case yamlite.Int:
+				c.Eq = int(eq.Int)
+			default:
+				return nil, fmt.Errorf("fact %q: line %d: eq must be true, false or a whole number", fact, eq.Line)
+			}
+		}
+		if err := f.Err(); err != nil {
+			return nil, fmt.Errorf("fact %q: %w", fact, err)
+		}
+		out[fact] = c
+	}
+	return out, nil
 }
 
 // parseMatch reads a matching rule and returns the category it takes.
 func parseMatch(data []byte, dir string) (string, error) {
-	var y matchYAML
-	if err := decodeStrict(data, &y); err != nil {
+	root, err := yamlite.Parse(data)
+	if err != nil {
 		return "", err
 	}
-	if y.Profile != dir {
-		return "", fmt.Errorf("profile is %q but the folder is %q", y.Profile, dir)
+	top := root.Read("profile", "match")
+	profile := top.String("profile")
+	matchNode := top.Node("match")
+	if err := top.Err(); err != nil {
+		return "", err
 	}
-	if y.Match.Contract != contract.Version {
+	m := matchNode.Read("contract", "state", "category")
+	version, state, category := m.String("contract"), m.String("state"), m.String("category")
+	if err := m.Err(); err != nil {
+		return "", err
+	}
+	if profile != dir {
+		return "", fmt.Errorf("profile is %q but the folder is %q", profile, dir)
+	}
+	if version != contract.Version {
 		return "", fmt.Errorf("match.contract must be %q", contract.Version)
 	}
-	if y.Match.State != contract.StateObserved {
+	if state != contract.StateObserved {
 		return "", fmt.Errorf("match.state must be %q", contract.StateObserved)
 	}
-	if y.Match.Category != dir {
-		return "", fmt.Errorf("match.category is %q but the folder is %q", y.Match.Category, dir)
+	if category != dir {
+		return "", fmt.Errorf("match.category is %q but the folder is %q", category, dir)
 	}
-	return y.Match.Category, nil
+	return category, nil
 }
 
 // parseProfile reads and checks one profile against the rubric. Every
 // mistake that can be found without a record is found here.
 func parseProfile(data []byte, dir string, rubric *Rubric) (*Profile, error) {
-	var y profileYAML
-	if err := decodeStrict(data, &y); err != nil {
+	y, err := readProfile(data)
+	if err != nil {
 		return nil, err
 	}
 	if y.Profile != dir {

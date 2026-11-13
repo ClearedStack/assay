@@ -6,15 +6,12 @@
 package tools
 
 import (
-	"bytes"
 	"embed"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 
-	"go.yaml.in/yaml/v3"
-
+	"github.com/ClearedStack/assay/internal/yamlite"
 	rubricprofiles "github.com/ClearedStack/assay/tools/rubric-profiles"
 )
 
@@ -30,17 +27,44 @@ var embedded embed.FS
 // FS returns the embedded rule data, rooted at the tools folder.
 func FS() fs.FS { return embedded }
 
-type registryYAML struct {
-	SubTools []struct {
-		Name           string `yaml:"name"`
-		Path           string `yaml:"path"`
-		Responsibility string `yaml:"responsibility"`
-		Parts          struct {
-			Match    string `yaml:"match"`
-			Logic    string `yaml:"logic"`
-			Fixtures string `yaml:"fixtures"`
-		} `yaml:"parts"`
-	} `yaml:"sub_tools"`
+// subTool is one entry of registry.yaml.
+type subTool struct {
+	name, path string
+}
+
+func readRegistry(data []byte) ([]subTool, error) {
+	root, err := yamlite.Parse(data)
+	if err != nil {
+		return nil, err
+	}
+	top := root.Read("sub_tools")
+	entries := top.List("sub_tools")
+	if err := top.Err(); err != nil {
+		return nil, err
+	}
+	var out []subTool
+	for _, n := range entries {
+		f := n.Read("name", "path", "responsibility", "parts")
+		st := subTool{name: f.String("name"), path: f.String("path")}
+		f.String("responsibility")
+		partsNode := f.Node("parts")
+		if err := f.Err(); err != nil {
+			return nil, err
+		}
+		// A sub-tool has three parts, and the registry must say where each
+		// one is.
+		parts := partsNode.Read("match", "logic", "fixtures")
+		for _, part := range []string{"match", "logic", "fixtures"} {
+			if parts.String(part) == "" && parts.Err() == nil {
+				return nil, fmt.Errorf("sub-tool %q must name its matching rule, logic and fixtures", st.name)
+			}
+		}
+		if err := parts.Err(); err != nil {
+			return nil, fmt.Errorf("sub-tool %q must name its matching rule, logic and fixtures: %w", st.name, err)
+		}
+		out = append(out, st)
+	}
+	return out, nil
 }
 
 // Load reads registry.yaml from fsys and loads every sub-tool it lists.
@@ -53,34 +77,29 @@ func Load(fsys fs.FS) (*rubricprofiles.Set, error) {
 	if err != nil {
 		return nil, fmt.Errorf("registry.yaml: %w", err)
 	}
-	var reg registryYAML
-	dec := yaml.NewDecoder(bytes.NewReader(data))
-	dec.KnownFields(true)
-	if err := dec.Decode(&reg); err != nil && err != io.EOF {
+	entries, err := readRegistry(data)
+	if err != nil {
 		return nil, fmt.Errorf("registry.yaml: %w", err)
 	}
 
 	var set *rubricprofiles.Set
 	seen := map[string]bool{}
-	for _, st := range reg.SubTools {
-		if seen[st.Name] {
-			return nil, fmt.Errorf("registry.yaml: sub-tool %q is listed twice", st.Name)
+	for _, st := range entries {
+		if seen[st.name] {
+			return nil, fmt.Errorf("registry.yaml: sub-tool %q is listed twice", st.name)
 		}
-		seen[st.Name] = true
-		if st.Parts.Match == "" || st.Parts.Logic == "" || st.Parts.Fixtures == "" {
-			return nil, fmt.Errorf("registry.yaml: sub-tool %q must name its matching rule, logic and fixtures", st.Name)
-		}
-		switch st.Name {
+		seen[st.name] = true
+		switch st.name {
 		case rubricprofiles.Name:
-			sub, err := fs.Sub(fsys, st.Path)
+			sub, err := fs.Sub(fsys, st.path)
 			if err != nil {
-				return nil, fmt.Errorf("%s: %w", st.Path, err)
+				return nil, fmt.Errorf("%s: %w", st.path, err)
 			}
 			if set, err = rubricprofiles.Load(sub); err != nil {
-				return nil, fmt.Errorf("%s: %w", st.Path, err)
+				return nil, fmt.Errorf("%s: %w", st.path, err)
 			}
 		default:
-			return nil, fmt.Errorf("registry.yaml: no code for sub-tool %q in this build", st.Name)
+			return nil, fmt.Errorf("registry.yaml: no code for sub-tool %q in this build", st.name)
 		}
 	}
 	if set == nil {

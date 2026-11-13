@@ -66,7 +66,7 @@ func TestRegistryMustAgreeWithTheBuild(t *testing.T) {
 	}{
 		"as shipped":            {"sub_tools:" + entry, ""},
 		"sub-tool not listed":   {"sub_tools: []\n", "is not listed"},
-		"empty file":            {"", "is not listed"},
+		"empty file":            {"", "one document"},
 		"sub-tool with no code": {"sub_tools:" + entry + strings.Replace(entry, "rubric-profiles", "rate-cards", 2), "no code for sub-tool"},
 		"listed twice":          {"sub_tools:" + entry + entry, "listed twice"},
 		"a part is missing":     {"sub_tools:" + strings.Replace(entry, "fixtures: f", "fixtures: ''", 1), "matching rule, logic and fixtures"},
