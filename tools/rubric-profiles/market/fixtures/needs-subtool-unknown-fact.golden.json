@@ -4,6 +4,7 @@
   "id": "PA-3013",
   "state": "needs_subtool",
   "category": "market",
+  "profile": "market",
   "rules": {
     "rubric_version": 1,
     "profile": "market",

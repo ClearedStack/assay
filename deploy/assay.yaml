@@ -1,13 +1,10 @@
 # Assay in the cs-workers namespace.
 #
-# The image line is resolved by ko (see .ko.yaml); the result is signed and
-# applied by the platform, not from here. The namespace itself belongs to
-# the platform and is not created by this file.
-#
-# Three values below are provisional, because SPEC.md does not give them:
-# the Muster address and port, the labels on the Muster pods, and the name
-# of the "Standard (Workers)" priority class, which is left out until it is
-# known. They are listed in the README under "Not yet done".
+# Built with ko (see .ko.yaml), pushed to the cluster's local Lazarette
+# registry, and pinned by digest below so nothing is pulled from outside at
+# runtime. Replace the placeholder digest with the linux/arm64 image digest
+# pushed to Lazarette before applying. The cs-workers namespace belongs to the
+# platform and is not created by this file.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -44,6 +41,17 @@ spec:
       # The token is how Assay proves who it is to Muster. It holds no
       # database credential and is given no other secret.
       automountServiceAccountToken: true
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values: ["arm64"]
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: ["cm3588-plus"]
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
@@ -53,13 +61,14 @@ spec:
           type: RuntimeDefault
       containers:
         - name: assay
-          image: ko://github.com/ClearedStack/assay/cmd/assay
+          # Replace the zero digest with the linux/arm64 digest pushed to Lazarette.
+          image: lazarette.clearedstack.svc.cluster.local:5000/assay@sha256:0000000000000000000000000000000000000000000000000000000000000000
           args: ["run"]
           env:
             - name: CONTRACT_VERSION
               value: v1
             - name: MUSTER_URL
-              value: http://muster.clearedstack.svc.cluster.local
+              value: http://muster.clearedstack.svc.cluster.local:8080
             - name: ASSAY_SPOOL_DIR
               value: /var/spool/cs
             # Tells the Go runtime to collect garbage well before the
@@ -69,7 +78,7 @@ spec:
           resources:
             requests:
               cpu: 10m
-              memory: 30Mi
+              memory: 16Mi
             limits:
               memory: 30Mi
           securityContext:
@@ -90,9 +99,8 @@ spec:
           emptyDir:
             sizeLimit: 16Mi
 ---
-# Default deny, both ways, with one way out: HTTP to Muster. The second
-# egress rule lets the pod look up Muster's name; without it the first rule
-# cannot be used.
+# Default deny, both ways, opening only HTTP (TCP 8080) to Muster in
+# clearedstack and DNS (UDP/TCP 53) to kube-system so Muster's name resolves.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -119,14 +127,11 @@ spec:
               app.kubernetes.io/name: muster
       ports:
         - protocol: TCP
-          port: 80
+          port: 8080
     - to:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
-          podSelector:
-            matchLabels:
-              k8s-app: kube-dns
       ports:
         - protocol: UDP
           port: 53

@@ -20,7 +20,7 @@ Rubric
   Low upkeep of reference data  2 x 2 =   4
   Total                                  40 / 100
 
-Recommendation: Reject
+Recommendation: reject
 Split/merge review: no
 
 Tie-breakers (higher sorts first)

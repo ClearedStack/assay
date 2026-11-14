@@ -123,13 +123,13 @@ func TestRecommendationsMatchTheSpecification(t *testing.T) {
 			var want string
 			switch {
 			case total >= 75 && gap > 1:
-				want = "Build"
+				want = "build"
 			case total >= 75 && gap == 1:
-				want = "Link"
+				want = "link"
 			case total >= 55 && total <= 74:
-				want = "Park"
+				want = "park"
 			case total < 55:
-				want = "Reject"
+				want = "reject"
 			}
 			if got := r.Recommend(total, ratings); got != want {
 				t.Fatalf("total %d, gap %d: got %s, want %s", total, gap, got, want)
@@ -148,7 +148,7 @@ func TestRecommendationsMatchTheSpecification(t *testing.T) {
 		}
 	}
 	walk(0, 0)
-	for _, name := range []string{"Build", "Link", "Park", "Reject"} {
+	for _, name := range []string{"build", "link", "park", "reject"} {
 		if seen[name] == 0 {
 			t.Errorf("no set of ratings gives %s", name)
 		}

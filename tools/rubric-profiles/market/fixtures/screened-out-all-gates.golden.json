@@ -4,46 +4,39 @@
   "id": "PA-3009",
   "state": "screened_out",
   "category": "market",
+  "profile": "market",
   "rules": {
     "rubric_version": 1,
     "profile": "market",
-    "profile_version": 1
+    "profile_version": 1,
+    "gates": {
+      "public_source": 2,
+      "runs_in_browser": 1,
+      "private_by_design": 1,
+      "one_job": 1,
+      "arithmetic_not_advice": 1
+    }
   },
-  "gates": [
-    {
-      "id": "public_source",
-      "name": "Public source",
-      "pass": false,
-      "rule": 2,
+  "gates": {
+    "public_source": {
+      "passed": false,
       "reason": "The governing source is not a statute, a regulation or an official government publication."
     },
-    {
-      "id": "runs_in_browser",
-      "name": "Runs in the browser",
-      "pass": false,
-      "rule": 1,
+    "runs_in_browser": {
+      "passed": false,
       "reason": "It needs a backend server."
     },
-    {
-      "id": "private_by_design",
-      "name": "Private by design",
-      "pass": false,
-      "rule": 1,
+    "private_by_design": {
+      "passed": false,
       "reason": "It does not work offline."
     },
-    {
-      "id": "one_job",
-      "name": "One job",
-      "pass": false,
-      "rule": 1,
+    "one_job": {
+      "passed": false,
       "reason": "It does more than one job."
     },
-    {
-      "id": "arithmetic_not_advice",
-      "name": "Arithmetic, not advice",
-      "pass": false,
-      "rule": 1,
+    "arithmetic_not_advice": {
+      "passed": false,
       "reason": "It renders advice or a legal conclusion."
     }
-  ]
+  }
 }

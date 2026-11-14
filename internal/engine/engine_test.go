@@ -110,8 +110,8 @@ func TestScoredOutcomeAddsUp(t *testing.T) {
 		}
 		sum += f.Points
 	}
-	if *out.Total != sum || sum < 20 || sum > 100 {
-		t.Errorf("total %d, factors add up to %d", *out.Total, sum)
+	if *out.Score != sum || sum < 20 || sum > 100 {
+		t.Errorf("score %d, factors add up to %d", *out.Score, sum)
 	}
 }
 
@@ -129,14 +129,14 @@ func TestScreenedOutShowsEveryGateAndNoScore(t *testing.T) {
 		if g.Reason == "" {
 			t.Errorf("gate %s has no public reason", g.ID)
 		}
-		if !g.Pass {
+		if !g.Passed {
 			failed++
 		}
 	}
 	if failed != 1 {
 		t.Errorf("want exactly one failed gate, got %d", failed)
 	}
-	if out.Factors != nil || out.Total != nil || out.Recommendation != "" || out.SplitMergeReview != nil || out.TieBreakers != nil {
+	if out.Factors != nil || out.Score != nil || out.Recommendation != "" || out.SplitFlag != nil || out.TieBreakers != nil {
 		t.Error("a candidate that is screened out must not be scored")
 	}
 }
@@ -158,7 +158,7 @@ func TestPausedAndBrokenItemsCarryNoVerdict(t *testing.T) {
 		if out.Error == nil || out.Error.Code != want.code || out.State != want.state {
 			t.Errorf("%s: got state %q, error %v", name, out.State, out.Error)
 		}
-		if out.Gates != nil || out.Factors != nil || out.Total != nil || out.Recommendation != "" {
+		if out.Gates != nil || out.Factors != nil || out.Score != nil || out.Recommendation != "" {
 			t.Errorf("%s: a partial verdict was given", name)
 		}
 	}
@@ -226,8 +226,8 @@ func TestErrorsNeverEchoTheInput(t *testing.T) {
 	}
 }
 
-func scored(id string, total int, ties ...int64) *contract.Outcome {
-	o := &contract.Outcome{ItemID: id, State: contract.StateScored, Total: &total}
+func scored(id string, score int, ties ...int64) *contract.Outcome {
+	o := &contract.Outcome{ItemID: id, State: contract.StateScored, Score: &score}
 	for i, v := range ties {
 		o.TieBreakers = append(o.TieBreakers, contract.TieBreaker{ID: "t" + strconv.Itoa(i), Value: v})
 	}
@@ -288,8 +288,8 @@ func TestRealTieBreak(t *testing.T) {
 		t.Fatal("the fixture no longer has the value this test changes")
 	}
 	b := eng.Evaluate(more)
-	if *a.Total != *b.Total {
-		t.Fatal("the two candidates should have the same total")
+	if *a.Score != *b.Score {
+		t.Fatal("the two candidates should have the same score")
 	}
 	if engine.Compare(b, a) >= 0 {
 		t.Error("the candidate with more community demand should sort first")

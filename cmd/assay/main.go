@@ -189,7 +189,7 @@ func cmdRank(args []string, stdout, stderr io.Writer) int {
 			}
 			ties += fmt.Sprint(t.Value)
 		}
-		sayf(tw, "%d\t%s\t%d\t%s\t%s\n", i+1, o.ItemID, *o.Total, o.Recommendation, ties)
+		sayf(tw, "%d\t%s\t%d\t%s\t%s\n", i+1, o.ItemID, *o.Score, o.Recommendation, ties)
 	}
 	for _, o := range others {
 		id, state := o.ItemID, o.State

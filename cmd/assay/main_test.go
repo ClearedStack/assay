@@ -93,7 +93,7 @@ func TestEvalReadsStandardInput(t *testing.T) {
 		t.Fatal(err)
 	}
 	code, out, _ := runCLI(t, string(raw), noEnv, "eval", "-")
-	if code != exitOK || !strings.Contains(out, "Recommendation: Link") {
+	if code != exitOK || !strings.Contains(out, "Recommendation: link") {
 		t.Errorf("exit %d, output:\n%s", code, out)
 	}
 }

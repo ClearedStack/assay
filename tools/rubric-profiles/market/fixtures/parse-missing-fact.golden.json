@@ -3,6 +3,7 @@
   "worker": "assay",
   "id": "PA-3016",
   "category": "market",
+  "profile": "market",
   "rules": {
     "rubric_version": 1,
     "profile": "market",

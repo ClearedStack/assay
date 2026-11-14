@@ -4,6 +4,7 @@
   "id": "PA-1015",
   "state": "needs_subtool",
   "category": "cyber",
+  "profile": "cyber",
   "rules": {
     "rubric_version": 1,
     "profile": "cyber",

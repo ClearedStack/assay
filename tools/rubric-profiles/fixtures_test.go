@@ -177,14 +177,14 @@ func TestEveryProfileShowsEachOutcome(t *testing.T) {
 			seen[o.Category][string(o.Error.Code)] = true
 		case o.State == contract.StateScored:
 			seen[o.Category][o.Recommendation] = true
-			if *o.SplitMergeReview {
+			if o.SplitFlag != nil && *o.SplitFlag {
 				seen[o.Category]["split/merge"] = true
 			}
 		default:
 			seen[o.Category][o.State] = true
 		}
 	}
-	want := []string{"Build", "Link", "Park", "Reject", "split/merge", contract.StateScreenedOut, "E_NEEDS_SUBTOOL", "E_PARSE"}
+	want := []string{"build", "link", "park", "reject", "split/merge", contract.StateScreenedOut, "E_NEEDS_SUBTOOL", "E_PARSE"}
 	for _, category := range set.Categories() {
 		for _, kind := range want {
 			if !seen[category][kind] {

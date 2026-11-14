@@ -20,7 +20,7 @@ Rubric
   Low upkeep of reference data  5 x 2 =  10
   Total                                  78 / 100
 
-Recommendation: Link
+Recommendation: link
 Split/merge review: no
 
 Tie-breakers (higher sorts first)

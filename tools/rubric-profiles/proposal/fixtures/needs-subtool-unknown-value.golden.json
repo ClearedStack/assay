@@ -4,6 +4,7 @@
   "id": "PA-5013",
   "state": "needs_subtool",
   "category": "proposal",
+  "profile": "proposal",
   "rules": {
     "rubric_version": 1,
     "profile": "proposal",

@@ -181,16 +181,87 @@ func TestUnknownFieldFingerprintDependsOnTheFieldButDoesNotShowIt(t *testing.T) 
 }
 
 func TestEncodeIsStable(t *testing.T) {
-	total := 86
+	score := 86
 	flag := false
-	o := &Outcome{Contract: Version, Worker: Worker, ItemID: "PA-0007", State: StateScored, Total: &total,
-		SplitMergeReview: &flag, Gates: []GateResult{{ID: "g", Name: "G <&>", Pass: true, Rule: 1, Reason: "it's fine"}}}
+	o := &Outcome{
+		Contract: Version, Worker: Worker, ItemID: "PA-0007", State: StateScored,
+		Category: "pricing", Profile: "pricing", Score: &score, Recommendation: "build",
+		SplitFlag: &flag,
+		Rules: &RulesRef{
+			Rubric: 1, Profile: "pricing", ProfileVersion: 1,
+			Gates:   RuleRows{{ID: "public_source", Rule: 1}},
+			Factors: RuleRows{{ID: "need", Rule: 2}},
+		},
+		Gates:   GateVerdicts{{ID: "public_source", Name: "Public source", Passed: true, Rule: 1, Reason: "it's <&> fine"}},
+		Factors: FactorRatings{{ID: "need", Name: "Need", Rating: 4, Weight: 4, Points: 16, Rule: 2}},
+	}
 	first := Encode(o)
 	if string(first) != string(Encode(o)) {
 		t.Fatal("encoding the same outcome twice gave different bytes")
 	}
-	if !strings.Contains(string(first), `"G <&>"`) || !strings.HasSuffix(string(first), "}\n") || !strings.Contains(string(first), `"id": "PA-0007"`) {
+	if !strings.Contains(string(first), `"it's <&> fine"`) || !strings.HasSuffix(string(first), "}\n") || !strings.Contains(string(first), `"id": "PA-0007"`) {
 		t.Errorf("unexpected encoding:\n%s", first)
+	}
+}
+
+func TestCheckEvaluationMatchesLogbook(t *testing.T) {
+	const goodScored = `{
+		"profile": "sample-profile",
+		"gates": {"sample_gate_a": {"passed": true}, "sample_gate_b": {"passed": true, "reason": "Clear."}},
+		"factors": {"sample_factor_a": {"rating": 5, "weight": 4}, "sample_factor_b": {"rating": 2, "weight": 3}},
+		"score": 26,
+		"recommendation": "reject",
+		"split_flag": true
+	}`
+	const goodScreenedOut = `{
+		"profile": "sample-profile",
+		"gates": {"sample_gate_a": {"passed": true}, "sample_gate_b": {"passed": false, "reason": "Sample reason."}}
+	}`
+	if perr := CheckEvaluation([]byte(goodScored)); perr != nil {
+		t.Fatalf("valid scored evaluation refused: %v", perr)
+	}
+	if perr := CheckEvaluation([]byte(goodScreenedOut)); perr != nil {
+		t.Fatalf("valid screened_out evaluation refused: %v", perr)
+	}
+
+	parseRefusals := map[string]string{
+		"wrong score":                  strings.Replace(goodScored, `"score": 26`, `"score": 27`, 1),
+		"missing score":                strings.Replace(goodScored, `"score": 26,`, ``, 1),
+		"missing recommendation":       strings.Replace(goodScored, `"recommendation": "reject",`, ``, 1),
+		"rating above 5":               strings.Replace(goodScored, `"rating": 5`, `"rating": 6`, 1),
+		"rating 0":                     strings.Replace(goodScored, `"rating": 5`, `"rating": 0`, 1),
+		"fractional rating":            strings.Replace(goodScored, `"rating": 5`, `"rating": 2.5`, 1),
+		"weight 0":                     strings.Replace(goodScored, `"weight": 4`, `"weight": 0`, 1),
+		"extra factor field":           strings.Replace(goodScored, `"weight": 4}`, `"weight": 4, "rule": 1}`, 1),
+		"bad factor slug":              strings.Replace(goodScored, `"sample_factor_a"`, `"Sample Factor"`, 1),
+		"factors as array":             strings.Replace(goodScored, `{"sample_factor_a": {"rating": 5, "weight": 4}, "sample_factor_b": {"rating": 2, "weight": 3}}`, `[]`, 1),
+		"empty factors when passed":    strings.Replace(goodScored, `{"sample_factor_a": {"rating": 5, "weight": 4}, "sample_factor_b": {"rating": 2, "weight": 3}}`, `{}`, 1),
+		"gates as array":               `{"profile":"sample-profile","gates":[{"id":"g","pass":true}]}`,
+		"empty gates":                  `{"profile":"sample-profile","gates":{}}`,
+		"extra gate field":             strings.Replace(goodScreenedOut, `"passed": true}`, `"passed": true, "rule": 1}`, 1),
+		"failed gate without reason":   `{"profile":"sample-profile","gates":{"sample_gate_a":{"passed":false}}}`,
+		"failed gate blank reason":     `{"profile":"sample-profile","gates":{"sample_gate_a":{"passed":false,"reason":"  "}}}`,
+		"failed gate with factors":     strings.TrimSuffix(goodScreenedOut, "}") + `,"factors":{"a":{"rating":5,"weight":4}}}`,
+		"failed gate with score":       strings.TrimSuffix(goodScreenedOut, "}") + `,"score":20}`,
+		"failed gate with rec":         strings.TrimSuffix(goodScreenedOut, "}") + `,"recommendation":"reject"}`,
+		"failed gate with split_flag":  strings.TrimSuffix(goodScreenedOut, "}") + `,"split_flag":true}`,
+		"missing profile":              strings.Replace(goodScreenedOut, `"profile": "sample-profile",`, ``, 1),
+		"bad profile slug":             strings.Replace(goodScreenedOut, `"sample-profile"`, `"Sample Profile"`, 1),
+	}
+	for name, bad := range parseRefusals {
+		if perr := CheckEvaluation([]byte(bad)); perr == nil || perr.Code != errs.Parse {
+			t.Errorf("%s: want E_PARSE, got %v", name, perr)
+		}
+	}
+
+	unknownRecs := []string{
+		strings.Replace(goodScored, `"reject"`, `"Build"`, 1),
+		strings.Replace(goodScored, `"reject"`, `"merge"`, 1),
+	}
+	for _, rec := range unknownRecs {
+		if perr := CheckEvaluation([]byte(rec)); perr == nil || perr.Code != errs.NeedsSubtool {
+			t.Errorf("unknown recommendation: want E_NEEDS_SUBTOOL, got %v", perr)
+		}
 	}
 }
 

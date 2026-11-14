@@ -20,7 +20,7 @@ Rubric
   Low upkeep of reference data  3 x 2 =   6
   Total                                  82 / 100
 
-Recommendation: Build
+Recommendation: build
 Split/merge review: yes
 
 Tie-breakers (higher sorts first)

@@ -1,13 +1,11 @@
 # Build configuration for ko. Assay is built straight from source into an
 # image; there is no Dockerfile.
 #
-#   KO_DOCKER_REPO=lazarette.clearedstack.svc.cluster.local:5000 \
-#     ko resolve --base-import-paths -f deploy/ > assay.resolved.yaml
+#   KO_DOCKER_REPO=lazarette.clearedstack.svc.cluster.local:5000/assay \
+#     ko build --bare --platform=linux/arm64 ./cmd/assay
 #
-# --base-import-paths names the image after the last part of the import path
-# with the registry in front, which gives ".../assay", the name in
-# component.json.
-defaultBaseImage: cgr.dev/chainguard/static:latest
+# ko's built-in default base image is a static, shell-less non-root image
+# pinned by digest inside ko; nothing is tagged :latest.
 
 builds:
   - id: assay

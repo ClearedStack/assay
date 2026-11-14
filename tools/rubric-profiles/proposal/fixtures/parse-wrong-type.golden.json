@@ -3,6 +3,7 @@
   "worker": "assay",
   "id": "PA-5016",
   "category": "proposal",
+  "profile": "proposal",
   "rules": {
     "rubric_version": 1,
     "profile": "proposal",

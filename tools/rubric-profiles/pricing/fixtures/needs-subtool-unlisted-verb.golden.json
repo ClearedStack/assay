@@ -4,6 +4,7 @@
   "id": "PA-4019",
   "state": "needs_subtool",
   "category": "pricing",
+  "profile": "pricing",
   "rules": {
     "rubric_version": 1,
     "profile": "pricing",

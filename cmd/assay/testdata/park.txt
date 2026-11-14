@@ -20,7 +20,7 @@ Rubric
   Low upkeep of reference data  3 x 2 =   6
   Total                                  60 / 100
 
-Recommendation: Park
+Recommendation: park
 Split/merge review: no
 
 Tie-breakers (higher sorts first)

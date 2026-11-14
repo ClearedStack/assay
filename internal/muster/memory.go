@@ -169,8 +169,16 @@ func (m *Memory) Send(ctx context.Context, r Report) error {
 		}
 		if len(r.Result) > 0 {
 			var obj map[string]json.RawMessage
-			if json.Unmarshal(r.Result, &obj) != nil {
+			if json.Unmarshal(r.Result, &obj) != nil || obj == nil {
 				return rejected()
+			}
+			if contract.HasGates(r.Result) {
+				if perr := contract.CheckEvaluation(r.Result); perr != nil {
+					if perr.Code == errs.NeedsSubtool {
+						return ErrLogbookUnknownValue
+					}
+					return ErrLogbookRefused
+				}
 			}
 		}
 		c.State, c.Result = r.State, append([]byte(nil), r.Result...)

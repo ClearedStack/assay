@@ -3,6 +3,7 @@
   "worker": "assay",
   "id": "PA-4022",
   "category": "pricing",
+  "profile": "pricing",
   "rules": {
     "rubric_version": 1,
     "profile": "pricing",

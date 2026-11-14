@@ -3,6 +3,7 @@
   "worker": "assay",
   "id": "PA-1017",
   "category": "cyber",
+  "profile": "cyber",
   "rules": {
     "rubric_version": 1,
     "profile": "cyber",

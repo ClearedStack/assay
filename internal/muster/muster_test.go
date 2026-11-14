@@ -651,6 +651,20 @@ func TestStandInIsAsStrictAsTheContract(t *testing.T) {
 	if status, _ := do("POST", "/v1/lease", good, "application/json; charset=utf-8", `{"contract":"v1"}`); status != 200 {
 		t.Errorf("a good lease call after all that: %d", status)
 	}
+	// With the lease held, an evaluation Logbook would refuse is refused on
+	// complete without closing the lease, and a well-formed one succeeds.
+	if status, rb := do("POST", "/v1/complete", good, json,
+		`{"contract":"v1","lease":"PA-0001.1","state":"scored","result":{"gates":[{"id":"g","pass":true}]}}`); status != 400 || rb.Error != "E_PARSE" || rb.Cause != "bad_field" {
+		t.Errorf("malformed evaluation: got %d %+v", status, rb)
+	}
+	if status, rb := do("POST", "/v1/complete", good, json,
+		`{"contract":"v1","lease":"PA-0001.1","state":"scored","result":{"profile":"pricing","gates":{"public_source":{"passed":true}},"factors":{"need":{"rating":4,"weight":4}},"score":16,"recommendation":"Build"}}`); status != 422 || rb.Error != "E_NEEDS_SUBTOOL" || rb.Cause != "unknown_value" {
+		t.Errorf("unknown recommendation: got %d %+v", status, rb)
+	}
+	if status, _ := do("POST", "/v1/complete", good, json,
+		`{"contract":"v1","lease":"PA-0001.1","state":"scored","result":{"profile":"pricing","gates":{"public_source":{"passed":true}},"factors":{"need":{"rating":4,"weight":4}},"score":16,"recommendation":"reject"}}`); status != 200 {
+		t.Errorf("valid evaluation: got %d", status)
+	}
 	if status, _ := do("POST", "/v1/lease", good, json, `{"contract":"v1"}`); status != 204 {
 		t.Errorf("an empty queue answers 204, got %d", status)
 	}

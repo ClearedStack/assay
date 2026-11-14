@@ -254,20 +254,22 @@ type problem struct {
 }
 
 var (
-	notJSON         = problem{errs.Parse, "not_json", "the request is not one json value"}
-	unknownField    = problem{errs.Parse, "unknown_field", "the request has a field this call does not define"}
-	missingField    = problem{errs.Parse, "missing_field", "a required field is missing"}
-	badField        = problem{errs.Parse, "bad_field", "a field does not have the form this call requires"}
-	useNeedsSubtool = problem{errs.Parse, "bad_field", "report a missing rule with the needs_subtool call"}
-	noCredential    = problem{errs.Parse, "no_credential", "no valid credential was presented"}
-	noSuchCall      = problem{errs.Parse, "no_such_call", "no such call"}
-	wrongMethod     = problem{errs.Parse, "wrong_method", "this call does not accept that method"}
-	tooLarge        = problem{errs.Parse, "too_large", "the request is too large"}
-	wrongType       = problem{errs.Parse, "wrong_type", "the content type must be application/json"}
-	leaseNotHeld    = problem{errs.Parse, "lease_not_held", "the lease is not held"}
-	moveNotAllowed  = problem{errs.Parse, "move_not_allowed", "that move is not allowed"}
-	unknownContract = problem{errs.NeedsSubtool, "unknown_contract", "this contract version is not known"}
-	busy            = problem{errs.Timeout, "busy", "too busy; try again"}
+	notJSON             = problem{errs.Parse, "not_json", "the request is not one json value"}
+	unknownField        = problem{errs.Parse, "unknown_field", "the request has a field this call does not define"}
+	missingField        = problem{errs.Parse, "missing_field", "a required field is missing"}
+	badField            = problem{errs.Parse, "bad_field", "a field does not have the form this call requires"}
+	useNeedsSubtool     = problem{errs.Parse, "bad_field", "report a missing rule with the needs_subtool call"}
+	logbookRefused      = problem{errs.Parse, "bad_field", "the record store refused a field"}
+	noCredential        = problem{errs.Parse, "no_credential", "no valid credential was presented"}
+	noSuchCall          = problem{errs.Parse, "no_such_call", "no such call"}
+	wrongMethod         = problem{errs.Parse, "wrong_method", "this call does not accept that method"}
+	tooLarge            = problem{errs.Parse, "too_large", "the request is too large"}
+	wrongType           = problem{errs.Parse, "wrong_type", "the content type must be application/json"}
+	leaseNotHeld        = problem{errs.Parse, "lease_not_held", "the lease is not held"}
+	moveNotAllowed      = problem{errs.Parse, "move_not_allowed", "that move is not allowed"}
+	unknownContract     = problem{errs.NeedsSubtool, "unknown_contract", "this contract version is not known"}
+	logbookUnknownValue = problem{errs.NeedsSubtool, "unknown_value", "the record store has no rule for a value"}
+	busy                = problem{errs.Timeout, "busy", "too busy; try again"}
 )
 
 // refuse writes a refusal: a status and a body of exactly three fields.
@@ -286,6 +288,10 @@ func refuseError(w http.ResponseWriter, err error) {
 		refuse(w, http.StatusConflict, moveNotAllowed)
 	case errors.Is(err, ErrLeaseGone):
 		refuse(w, http.StatusConflict, leaseNotHeld)
+	case errors.Is(err, ErrLogbookRefused):
+		refuse(w, http.StatusBadRequest, logbookRefused)
+	case errors.Is(err, ErrLogbookUnknownValue):
+		refuse(w, http.StatusUnprocessableEntity, logbookUnknownValue)
 	case errors.As(err, &pub) && pub.Code == errs.Parse:
 		refuse(w, http.StatusBadRequest, badField)
 	default:

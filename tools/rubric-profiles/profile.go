@@ -311,6 +311,9 @@ func parseProfile(data []byte, dir string, rubric *Rubric) (*Profile, error) {
 			if strings.TrimSpace(ry.Reason) == "" {
 				return nil, fmt.Errorf("gate %q row %d: reason is missing", g.ID, i+1)
 			}
+			if !contract.ValidLogbookText(ry.Reason, 1000) {
+				return nil, fmt.Errorf("gate %q row %d: reason exceeds 1000 bytes or holds control characters", g.ID, i+1)
+			}
 			p.gates[g.ID] = append(p.gates[g.ID], gateRow{when: when, pass: *ry.Pass, reason: ry.Reason})
 		}
 	}
