@@ -69,6 +69,18 @@ func compact(t *testing.T, data []byte) string {
 	return buf.String()
 }
 
+// outcomeIn takes Assay's own outcome out of a result sent to the hub.
+func outcomeIn(t *testing.T, result []byte) []byte {
+	t.Helper()
+	var r struct {
+		Outcome json.RawMessage `json:"outcome"`
+	}
+	if err := json.Unmarshal(result, &r); err != nil || r.Outcome == nil {
+		t.Fatalf("result has no outcome: %s", result)
+	}
+	return r.Outcome
+}
+
 type rig struct {
 	hub   *muster.Memory
 	spool *spool.Spool
@@ -187,7 +199,7 @@ func TestEachOutcomeBecomesTheRightCall(t *testing.T) {
 			t.Errorf("%s: got %s state %q code %q, want %s state %q code %q", tc.name, got.Call, got.State, got.Code, tc.call, tc.state, tc.code)
 		}
 		if tc.call == muster.CallComplete {
-			if compact(t, got.Result) != compact(t, fixture(t, tc.name+".golden.json")) {
+			if compact(t, outcomeIn(t, got.Result)) != compact(t, fixture(t, tc.name+".golden.json")) {
 				t.Errorf("%s: the result sent to the hub is not the golden outcome", tc.name)
 			}
 		} else if len(got.Result) != 0 {
@@ -261,7 +273,7 @@ func TestHubTimeoutIsSpooledAndRetried(t *testing.T) {
 				t.Errorf("completions: got %s, want %s", got, want)
 			}
 			if first := r.hub.Completions()[0]; first.Call == muster.CallComplete &&
-				compact(t, first.Result) != compact(t, fixture(t, name+".golden.json")) {
+				compact(t, outcomeIn(t, first.Result)) != compact(t, fixture(t, name+".golden.json")) {
 				t.Error("the spooled result changed on its way through the spool")
 			}
 			if left, _ := r.spool.List(); len(left) != 0 {
@@ -386,7 +398,7 @@ func TestPausedItemsScoreAfterANewProfileDeploys(t *testing.T) {
 	r.drain()
 	done = r.hub.Completions()
 	if len(done) != 3 || done[2].Call != muster.CallComplete ||
-		compact(t, done[2].Result) != compact(t, fixture(t, "cyber/fixtures/build.golden.json")) {
+		compact(t, outcomeIn(t, done[2].Result)) != compact(t, fixture(t, "cyber/fixtures/build.golden.json")) {
 		t.Fatalf("after the profile deploys the item should be scored as its golden file says")
 	}
 }
@@ -474,7 +486,7 @@ func TestRunOverHTTPUntilCancelled(t *testing.T) {
 		if done[i].Call != wantCalls[i] || done[i].ItemID != itemOf(t, name+".input.json") {
 			t.Errorf("%s: got %s for %s", name, done[i].Call, done[i].ItemID)
 		}
-		if done[i].Call == muster.CallComplete && compact(t, done[i].Result) != compact(t, fixture(t, name+".golden.json")) {
+		if done[i].Call == muster.CallComplete && compact(t, outcomeIn(t, done[i].Result)) != compact(t, fixture(t, name+".golden.json")) {
 			t.Errorf("%s: the result over HTTP differs from the golden file", name)
 		}
 	}

@@ -1,13 +1,14 @@
-# Assay in the cs-workers namespace.
+# Assay in the cs-workers namespace. Written for Argo CD, pointed at this
+# directory (see kustomization.yaml).
 #
-# The image line is resolved by ko (see .ko.yaml); the result is signed and
-# applied by the platform, not from here. The namespace itself belongs to
-# the platform and is not created by this file.
+# The image is named "assay" and nothing more. Whoever deploys Assay says
+# which registry and which digest that is, with an image override, so no
+# registry address is written in this repository. The namespace belongs to
+# Muster's deploy/ and is not created by this file.
 #
-# Three values below are provisional, because SPEC.md does not give them:
-# the Muster address and port, the labels on the Muster pods, and the name
-# of the "Standard (Workers)" priority class, which is left out until it is
-# known. They are listed in the README under "Not yet done".
+# One value below is still provisional, because SPEC.md does not give it:
+# the name of the "Standard (Workers)" priority class, which is left out
+# until it is known.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -44,6 +45,18 @@ spec:
       # The token is how Assay proves who it is to Muster. It holds no
       # database credential and is given no other secret.
       automountServiceAccountToken: true
+      enableServiceLinks: false
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values: ["arm64"]
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: ["cm3588-plus"]
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
@@ -53,13 +66,13 @@ spec:
           type: RuntimeDefault
       containers:
         - name: assay
-          image: ko://github.com/ClearedStack/assay/cmd/assay
+          image: assay
           args: ["run"]
           env:
             - name: CONTRACT_VERSION
               value: v1
             - name: MUSTER_URL
-              value: http://muster.clearedstack.svc.cluster.local
+              value: http://muster.clearedstack.svc.cluster.local:8080
             - name: ASSAY_SPOOL_DIR
               value: /var/spool/cs
             # Tells the Go runtime to collect garbage well before the
@@ -90,7 +103,7 @@ spec:
           emptyDir:
             sizeLimit: 16Mi
 ---
-# Default deny, both ways, with one way out: HTTP to Muster. The second
+# Default deny, both ways, with one way out: Muster on port 8080. The second
 # egress rule lets the pod look up Muster's name; without it the first rule
 # cannot be used.
 apiVersion: networking.k8s.io/v1
@@ -119,7 +132,7 @@ spec:
               app.kubernetes.io/name: muster
       ports:
         - protocol: TCP
-          port: 80
+          port: 8080
     - to:
         - namespaceSelector:
             matchLabels:

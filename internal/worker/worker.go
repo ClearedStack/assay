@@ -109,14 +109,14 @@ func (w *Worker) send(ctx context.Context, r muster.Report) error {
 }
 
 // reportFor chooses the call that ends the lease. A decided item is
-// completed to its new state with the whole outcome as the result. An
+// completed to its new state with contract.Result as the result. An
 // unfamiliar one is paused. A broken one is failed with E_PARSE. Muster's
 // fail and needs_subtool calls carry no detail, so the reason and the
 // fingerprint of an error are in Assay's own log line and nowhere else.
 func reportFor(lease string, out *contract.Outcome) muster.Report {
 	switch {
 	case out.Error == nil:
-		return muster.Complete(lease, out.State, contract.Encode(out))
+		return muster.Complete(lease, out.State, contract.Result(out))
 	case out.Error.Code == errs.NeedsSubtool:
 		return muster.NeedsSubtool(lease)
 	}

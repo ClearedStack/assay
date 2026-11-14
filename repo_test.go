@@ -147,9 +147,10 @@ func TestPodHardening(t *testing.T) {
 	if !names["CONTRACT_VERSION"] || !names["MUSTER_URL"] {
 		t.Error("CONTRACT_VERSION and MUSTER_URL must be set")
 	}
-	// Built with ko.
-	if image := at(t, ctr, "image").(string); image != "ko://github.com/ClearedStack/assay/cmd/assay" {
-		t.Errorf("the image must be a ko reference to the command, got %q", image)
+	// Named by the slug alone: the deployer gives the registry and the
+	// digest with an image override.
+	if image := at(t, ctr, "image").(string); image != c.Slug {
+		t.Errorf("the image must be the component's slug and nothing more, got %q", image)
 	}
 	if !strings.HasSuffix("github.com/ClearedStack/"+c.Image, "/"+c.Slug) {
 		t.Error("the image name must be the component's slug")
