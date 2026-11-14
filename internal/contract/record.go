@@ -52,12 +52,18 @@ var (
 )
 
 // Tier is the clean-room provenance tier Sextant attaches to each fact.
+//
+// Seen is something Sextant observed on a page. Stated is a claim the source
+// makes about itself. Designed is a value fixed by the ClearedStack template
+// the tool will be generated from, proved after the build by Shakedown. Unknown
+// carries no value.
 type Tier string
 
 const (
-	TierSeen    Tier = "Seen"
-	TierStated  Tier = "Stated"
-	TierUnknown Tier = "Unknown"
+	TierSeen     Tier = "Seen"
+	TierDesigned Tier = "Designed"
+	TierStated   Tier = "Stated"
+	TierUnknown  Tier = "Unknown"
 )
 
 // Kind is the type of one fact value.
@@ -71,7 +77,8 @@ const (
 	KindList
 )
 
-// Value is one tiered fact: either Unknown (with a null value) or Seen/Stated
+// Value is one tiered fact: either Unknown (with a null value) or Seen,
+// Stated or Designed
 // carrying a boolean, a whole number, a string or a list of strings. Nothing
 // else is allowed among the facts.
 type Value struct {
@@ -352,7 +359,7 @@ func parseFactEnvelope(n node) (Value, *errs.Error) {
 			return Value{}, errs.New(errs.Parse, errs.InvalidValue, "facts")
 		}
 		return Value{Kind: KindUnknown, Tier: TierUnknown}, nil
-	case TierSeen, TierStated:
+	case TierSeen, TierStated, TierDesigned:
 		if valNode.kind == nodeNull {
 			return Value{}, errs.New(errs.Parse, errs.InvalidValue, "facts")
 		}

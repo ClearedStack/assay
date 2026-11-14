@@ -463,8 +463,8 @@ func parseCond(name string, def factDef, cy condYAML) (cond, error) {
 		c.tiers = map[contract.Tier]bool{}
 		for _, rawTier := range cy.TierIn {
 			tier := contract.Tier(rawTier)
-			if tier != contract.TierSeen && tier != contract.TierStated && tier != contract.TierUnknown {
-				return c, fmt.Errorf("tier %q must be Seen, Stated or Unknown", rawTier)
+			if tier != contract.TierSeen && tier != contract.TierDesigned && tier != contract.TierStated && tier != contract.TierUnknown {
+				return c, fmt.Errorf("tier %q must be Seen, Designed, Stated or Unknown", rawTier)
 			}
 			if c.tiers[tier] {
 				return c, fmt.Errorf("tier %q is listed twice", rawTier)
@@ -475,7 +475,7 @@ func parseCond(name string, def factDef, cy condYAML) (cond, error) {
 			return c, fmt.Errorf("tier Unknown has no value and cannot be combined with a value operator")
 		}
 	} else {
-		c.tiers = map[contract.Tier]bool{contract.TierSeen: true, contract.TierStated: true}
+		c.tiers = map[contract.Tier]bool{contract.TierSeen: true, contract.TierDesigned: true, contract.TierStated: true}
 	}
 
 	if count == 0 && cy.TierIn == nil {

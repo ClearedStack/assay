@@ -163,8 +163,8 @@ func TestLoadRefusesBadRuleData(t *testing.T) {
 		new  string
 		want string // part of the error
 	}{
-		{"unknown key in profile", "pricing/profile.yaml", "version: 3", "version: 3\ndefault_rating: 3", "default_rating"},
-		{"second YAML document", "pricing/profile.yaml", "version: 3", "version: 3\n---\nversion: 4", ""},
+		{"unknown key in profile", "pricing/profile.yaml", "version: 4", "version: 4\ndefault_rating: 3", "default_rating"},
+		{"second YAML document", "pricing/profile.yaml", "version: 4", "version: 4\n---\nversion: 5", ""},
 		{"profile name differs from folder", "pricing/profile.yaml", "profile: pricing", "profile: prices", "folder"},
 		{"condition on undeclared fact", "pricing/profile.yaml", "- when: {needs_backend: {eq: true}}", "- when: {has_backend: {eq: true}}", "undeclared fact"},
 		{"catch-all row", "pricing/profile.yaml", "- when: {needs_backend: {eq: true}}", "- when: {}", "at least one condition"},
@@ -177,10 +177,10 @@ func TestLoadRefusesBadRuleData(t *testing.T) {
 		{"threshold outside the declared range", "pricing/profile.yaml", "{worked_examples: {gte: 10}}", "{worked_examples: {gte: 10001}}", "outside the declared range"},
 		{"impossible range", "pricing/profile.yaml", "{need_signals: {gte: 15, lte: 29}}", "{need_signals: {gte: 29, lte: 15}}", "never match"},
 		{"empty value list", "pricing/profile.yaml", "{best_alternative: {in: [none]}}", "{best_alternative: {in: []}}", "never match"},
-		{"empty tier_in list", "pricing/profile.yaml", "tier_in: [Seen]", "tier_in: []", "never match"},
-		{"lower-case tier in tier_in", "pricing/profile.yaml", "tier_in: [Seen]", "tier_in: [seen]", "Seen, Stated or Unknown"},
-		{"duplicate tier in tier_in", "pricing/profile.yaml", "tier_in: [Seen]", "tier_in: [Seen, Seen]", "listed twice"},
-		{"Unknown tier with value operator", "pricing/profile.yaml", "tier_in: [Seen]", "tier_in: [Unknown]", "Unknown has no value"},
+		{"empty tier_in list", "pricing/profile.yaml", "tier_in: [Seen, Designed]", "tier_in: []", "never match"},
+		{"lower-case tier in tier_in", "pricing/profile.yaml", "tier_in: [Seen, Designed]", "tier_in: [Seen, designed]", "Seen, Designed, Stated or Unknown"},
+		{"duplicate tier in tier_in", "pricing/profile.yaml", "tier_in: [Seen, Designed]", "tier_in: [Seen, Seen]", "listed twice"},
+		{"Unknown tier with value operator", "pricing/profile.yaml", "tier_in: [Seen, Designed]", "tier_in: [Unknown]", "Unknown has no value"},
 		{"free-text fact type forbidden", "pricing/profile.yaml", "source_public: {type: bool}", "source_public: {type: text}", "unknown type"},
 		{"gate with no rows", "pricing/profile.yaml", "  arithmetic_not_advice:\n    - when: {output_kinds: {any_in: [legal_advice, compliance_determination]}}\n      pass: false\n      reason: \"It renders advice or a legal conclusion.\"\n    - when: {output_kinds: {all_in: [computed_number, structured_data, citation_lookup]}}\n      pass: true\n      reason: \"It computes numbers, structures data or looks up citations.\"\n", "  arithmetic_not_advice: []\n", "has no rows"},
 		{"gate the rubric does not have", "pricing/profile.yaml", "\nfactors:\n", "\n  sixth_gate:\n    - when: {needs_backend: {eq: true}}\n      pass: false\n      reason: \"No.\"\n\nfactors:\n", "rubric does not have"},
@@ -289,6 +289,37 @@ func TestTierConditions(t *testing.T) {
 	statedPrivacy["emits_tracking"] = contract.Value{Kind: contract.KindBool, Tier: contract.TierStated, Bool: false}
 	if _, ok := p.Gate("private_by_design", statedPrivacy); ok {
 		t.Fatal("Stated emits_tracking=false must pause private_by_design rather than passing")
+	}
+
+	// Stated connect_src_self=true does not satisfy it either.
+	statedCSP := pricingFacts()
+	statedCSP["connect_src_self"] = contract.Value{Kind: contract.KindBool, Tier: contract.TierStated, Bool: true}
+	if _, ok := p.Gate("private_by_design", statedCSP); ok {
+		t.Fatal("Stated connect_src_self=true must pause private_by_design rather than passing")
+	}
+
+	// Designed emits_tracking=false and connect_src_self=true, the facts the
+	// build template guarantees, pass private_by_design.
+	designedPrivacy := pricingFacts()
+	designedPrivacy["emits_tracking"] = contract.Value{Kind: contract.KindBool, Tier: contract.TierDesigned, Bool: false}
+	designedPrivacy["connect_src_self"] = contract.Value{Kind: contract.KindBool, Tier: contract.TierDesigned, Bool: true}
+	if d, ok := p.Gate("private_by_design", designedPrivacy); !ok || !d.Pass {
+		t.Fatalf("Designed emits_tracking and connect_src_self should pass private_by_design, got %+v, %v", d, ok)
+	}
+
+	// A Designed value that fails the gate still fails it: the tier opens the
+	// pass row, it does not make a bad value good.
+	designedTracking := pricingFacts()
+	designedTracking["emits_tracking"] = contract.Value{Kind: contract.KindBool, Tier: contract.TierDesigned, Bool: true}
+	if d, ok := p.Gate("private_by_design", designedTracking); !ok || d.Pass {
+		t.Fatalf("Designed emits_tracking=true should fail private_by_design, got %+v, %v", d, ok)
+	}
+
+	// Designed counts as an ordinary tier for every other fact.
+	designedJob := pricingFacts()
+	designedJob["core_job"] = contract.Value{Kind: contract.KindString, Tier: contract.TierDesigned, Str: "rate_calculation"}
+	if d, ok := p.Gate("one_job", designedJob); !ok || !d.Pass {
+		t.Fatalf("Designed core_job should pass one_job, got %+v, %v", d, ok)
 	}
 
 	// Unknown fact passes CheckFacts and fails closed (ok=false) in rule evaluation.
@@ -428,8 +459,8 @@ func TestCatalogAndSextantCoreJobs(t *testing.T) {
 
 	for _, category := range set.Categories() {
 		p := set.Match(category)
-		if p.Version != 3 {
-			t.Errorf("%s: got profile version %d, want 3", category, p.Version)
+		if p.Version != 4 {
+			t.Errorf("%s: got profile version %d, want 4", category, p.Version)
 		}
 		def, ok := p.facts["core_job"]
 		if !ok {

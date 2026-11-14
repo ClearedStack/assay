@@ -5,7 +5,14 @@
 # hold decides. If no row matches, the item is paused with E_NEEDS_SUBTOOL.
 # There is no default row anywhere.
 profile: cyber
-version: 3
+# Version 4: the passing private_by_design row now takes tier_in: [Seen,
+# Designed] on emits_tracking and connect_src_self. A tool that is not built
+# yet cannot have a Seen privacy fact; Designed is a value fixed by the
+# ClearedStack template it will be generated from (strict CSP connect-src
+# 'self', offline, no account) and proved after the build by Shakedown. A
+# vendor's own claim (Stated) still pauses the item. Every other fact reads
+# Seen, Designed or Stated.
+version: 4
 
 # Every fact a cyber record must carry. Each fact comes from Sextant in a
 # clean-room {value, tier} envelope; no free text can enter Assay. A record
@@ -90,8 +97,9 @@ gates:
       pass: true
       reason: "It runs entirely client-side."
 
-  # Passing private_by_design requires Seen provenance on emits_tracking and
-  # connect_src_self so unverified self-claims pause for inspection.
+  # Passing private_by_design requires Seen or Designed provenance on
+  # emits_tracking and connect_src_self, so an unverified vendor claim (Stated)
+  # pauses for inspection.
   private_by_design:
     - when: {works_offline: {eq: false}}
       pass: false
@@ -108,8 +116,8 @@ gates:
     - when:
         works_offline: {eq: true}
         needs_account: {eq: false}
-        emits_tracking: {eq: false, tier_in: [Seen]}
-        connect_src_self: {eq: true, tier_in: [Seen]}
+        emits_tracking: {eq: false, tier_in: [Seen, Designed]}
+        connect_src_self: {eq: true, tier_in: [Seen, Designed]}
       pass: true
       reason: "It works offline, with no account, no tracking and connect-src 'self'."
 

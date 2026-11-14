@@ -127,12 +127,12 @@ No threshold lives in Go code. Everything is under [`tools/rubric-profiles/`](to
 | --- | --- | --- |
 | Shared rubric | `rubric.yaml` | The five gates, the seven factors and their weights, the recommendation bands, the split/merge condition and the tie-breaker order. A test holds these to the numbers in `SPEC.md`. |
 | Matching rule | `<category>/match.yaml` | Which items a profile takes. |
-| Logic | `<category>/profile.yaml` | Closed-vocabulary fact declarations (`{value, tier}` envelopes, zero free text) and a decision table for each gate and each factor (`version: 3`). |
+| Logic | `<category>/profile.yaml` | Closed-vocabulary fact declarations (`{value, tier}` envelopes, zero free text) and a decision table for each gate and each factor (`version: 4`). |
 | Fixtures | `<category>/fixtures/` | Saved lease replies (`*.input.json`) and the exact outcome expected for each (`*.golden.json`). |
 
 There are five profiles: `pricing`, `proposal`, `cyber`, `market` and `devsecops`.
 
-A decision table is a list of rows, read top to bottom. The first row whose conditions all hold decides. **There is no default row.** If no row matches (including when a fact carries `tier: "Unknown"`, or when `emits_tracking` / `connect_src_self` carries `tier: "Stated"` instead of `"Seen"`), the item is paused with `E_NEEDS_SUBTOOL` and the rest of the queue carries on.
+A decision table is a list of rows, read top to bottom. The first row whose conditions all hold decides. **There is no default row.** If no row matches (including when a fact carries `tier: "Unknown"`, or when `emits_tracking` / `connect_src_self` carries `tier: "Stated"` instead of `"Seen"` or `"Designed"`), the item is paused with `E_NEEDS_SUBTOOL` and the rest of the queue carries on.
 
 The tests enforce three things about the rules:
 
@@ -151,7 +151,7 @@ The tests enforce three things about the rules:
 
 | Code | Meaning | What Assay does |
 | --- | --- | --- |
-| `E_NEEDS_SUBTOOL` | The data was valid and unfamiliar: an observation with no category or a category with no profile, a field or fact nobody declared, a value outside a declared set, an `Unknown` fact or unverified `Stated` privacy claim, or a case no row covers. | Pauses that item with the `needs_subtool` call and carries on. Muster replays it when a new build of Assay is deployed. |
+| `E_NEEDS_SUBTOOL` | The data was valid and unfamiliar: an observation with no category or a category with no profile, a field or fact nobody declared, a value outside a declared set, an `Unknown` fact or unverified `Stated` privacy claim (only `Seen` or `Designed` satisfies the privacy gate), or a case no row covers. | Pauses that item with the `needs_subtool` call and carries on. Muster replays it when a new build of Assay is deployed. |
 | `E_PARSE` | The data was broken: not JSON, a repeated key, a missing or mistyped field, a tier/null violation, a number out of range, a lease for something that is not an observed item. | Reports it with the `fail` call. Muster holds the item until the owner releases it. |
 | `E_TIMEOUT` | Muster did not answer in time, or is not serving. | Keeps the finished report in the spool and retries, waiting longer each time (1 s doubling to 60 s). |
 
@@ -180,7 +180,7 @@ When data is both broken and unfamiliar, `E_PARSE` wins. An error carries a code
 
 ## What has been checked
 
-- **Saved examples:** 146 fixture pairs using clean-room `{value, tier}` envelopes, covering every row of every decision table and every planned catalog job archetype across all five `version: 3` profiles, plus text goldens for the command.
+- **Saved examples:** 147 fixture pairs using clean-room `{value, tier}` envelopes, covering every row of every decision table and every planned catalog job archetype across all five `version: 4` profiles, plus text goldens for the command.
 - **Muster's contract:** all 52 of Muster's example files in `contract/v1/examples/` are replayed. Where Assay can make the request, what it sends matches the example to the byte; every answer and every refusal is acted on as the contract says. The same examples are replayed against Assay's stand-in for Muster, so the thing Assay is tested against cannot drift from the contract.
 - **Logbook and Countersign compatibility:** every golden `scored` and `screened_out` outcome is checked against Logbook's `core.check_evaluation` rules, Muster's `tx.Evaluation` projection, and Countersign's evaluation reader.
 - **Native Go fuzzing (`testing.F`):** fuzz targets exercise lease parsing, evaluation projection, strict YAML parsing, full engine determinism, and Muster HTTP refusal handling.
@@ -193,7 +193,7 @@ When data is both broken and unfamiliar, `E_PARSE` wins. An error carries a code
 
 ## Not yet done
 
-- **Sextant needs to emit `category` and `facts` on `results.sextant`.** Assay now parses Sextant's clean-room `{value, tier}` envelopes (`Seen`, `Stated`, `Unknown` where `value` is `null` iff `tier == "Unknown"`), optional `sub_tool` and `observed_on` provenance fields, and closed-vocabulary `core_job` slugs covering all 18 planned catalog tools plus Sextant's four base `CoreJobs` with zero free text (see "Proposed changes" in `SPEC.md`). Until Sextant's `ready-to-deploy` update emits `category` and the category's `facts` map under `results.sextant`, observations without `category` pause cleanly with `needs_subtool`.
+- **Sextant needs to emit `category` and `facts` on `results.sextant`.** Assay now parses Sextant's clean-room `{value, tier}` envelopes (`Seen`, `Designed`, `Stated`, `Unknown` where `value` is `null` iff `tier == "Unknown"`), optional `sub_tool` and `observed_on` provenance fields, and closed-vocabulary `core_job` slugs covering all 18 planned catalog tools plus Sextant's four base `CoreJobs` with zero free text (see "Proposed changes" in `SPEC.md`). Until Sextant's `ready-to-deploy` update emits `category` and the category's `facts` map under `results.sextant`, observations without `category` pause cleanly with `needs_subtool`.
 - **`Shipkeeper` portless `kind: worker` support for `app.yaml`.** `kustomization.yaml` points directly at `deploy/assay.yaml`, while `app.yaml` remains intentionally omitted until `Shipkeeper` supports portless `kind: worker` workloads (`args: ["run"]`, `MUSTER_URL`, `/var/spool/cs` mount, and no `tcpSocket` probe).
 - **One deployment value is unknown** and left out of `deploy/assay.yaml`: the name of the "Standard (Workers)" priority class.
 - **Not signed or stored by the platform yet.** Signing with `cosign`, storing in Lazarette and applying with Shipkeeper are done by other components and have not been tried. The running image is built with `ko` and pinned with an image override.

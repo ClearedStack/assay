@@ -2,6 +2,7 @@ package rubricprofiles_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"flag"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/ClearedStack/assay/internal/contract"
 	"github.com/ClearedStack/assay/internal/engine"
+	"github.com/ClearedStack/assay/internal/errs"
 	"github.com/ClearedStack/assay/tools"
 	rubricprofiles "github.com/ClearedStack/assay/tools/rubric-profiles"
 )
@@ -77,4 +79,57 @@ func TestRuleSetInvariants(t *testing.T) {
 	for _, p := range problems {
 		t.Error(p)
 	}
+}
+
+// TestPrivacyGateTiers proves, for all five profiles, that the passing
+// private_by_design row accepts Seen and Designed on emits_tracking and
+// connect_src_self and still pauses the item when either is Stated.
+func TestPrivacyGateTiers(t *testing.T) {
+	eng := engine.New(loadFromDisk(t))
+	for _, category := range []string{"pricing", "proposal", "cyber", "market", "devsecops"} {
+		raw, err := os.ReadFile(filepath.Join(category, "fixtures", "build.input.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, tc := range []struct {
+			tier    string
+			scored  bool
+			pausing bool
+		}{
+			{"Seen", true, false},
+			{"Designed", true, false},
+			{"Stated", false, true},
+		} {
+			for _, fact := range []string{"emits_tracking", "connect_src_self"} {
+				t.Run(category+"/"+fact+"/"+tc.tier, func(t *testing.T) {
+					var doc map[string]any
+					if err := json.Unmarshal(raw, &doc); err != nil {
+						t.Fatal(err)
+					}
+					facts := doc["results"].(map[string]any)["sextant"].(map[string]any)["facts"].(map[string]any)
+					facts[fact].(map[string]any)["tier"] = tc.tier
+					in, err := json.Marshal(doc)
+					if err != nil {
+						t.Fatal(err)
+					}
+					out := eng.Evaluate(in)
+					if tc.scored && (out.State != contract.StateScored || !gatePassed(out, "private_by_design")) {
+						t.Fatalf("%s %s: want scored with private_by_design passed, got state %q error %v", fact, tc.tier, out.State, out.Error)
+					}
+					if tc.pausing && (out.State != contract.StateNeedsSubtool || out.Error == nil || out.Error.Code != errs.NeedsSubtool) {
+						t.Fatalf("%s %s: want needs_subtool, got state %q error %v", fact, tc.tier, out.State, out.Error)
+					}
+				})
+			}
+		}
+	}
+}
+
+func gatePassed(out *contract.Outcome, gate string) bool {
+	for _, g := range out.Gates {
+		if g.ID == gate {
+			return g.Passed
+		}
+	}
+	return false
 }

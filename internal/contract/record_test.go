@@ -10,7 +10,7 @@ import (
 )
 
 // good is a lease reply as Muster sends it, with one tiered fact of each kind.
-const goodFacts = `{"a":{"value":true,"tier":"Seen"},"b":{"value":-12,"tier":"Stated"},"c":{"value":"token","tier":"Seen"},"d":{"value":["x","y"],"tier":"Seen"},"e":{"value":[],"tier":"Stated"},"f":{"value":null,"tier":"Unknown"}}`
+const goodFacts = `{"a":{"value":true,"tier":"Seen"},"b":{"value":-12,"tier":"Stated"},"c":{"value":"token","tier":"Seen"},"d":{"value":["x","y"],"tier":"Seen"},"e":{"value":[],"tier":"Stated"},"f":{"value":null,"tier":"Unknown"},"g":{"value":false,"tier":"Designed"},"h":{"value":"browser_js","tier":"Designed"}}`
 
 const good = `{"lease":"PA-0007.3","kind":"item","id":"PA-0007","state":"observed","lane":"normal","attempt":1,` + "\n" +
 	`"expires":"2026-01-05T09:01:00Z","results":{"sextant":{"category":"pricing",` + "\n" +
@@ -21,7 +21,7 @@ func TestParseLeaseReadsEveryKindOfFact(t *testing.T) {
 	if perr != nil {
 		t.Fatalf("unexpected error: %v", perr)
 	}
-	if rec.Lease != "PA-0007.3" || rec.ItemID != "PA-0007" || rec.Category != "pricing" || len(rec.Facts) != 6 {
+	if rec.Lease != "PA-0007.3" || rec.ItemID != "PA-0007" || rec.Category != "pricing" || len(rec.Facts) != 8 {
 		t.Fatalf("unexpected record: %+v", rec)
 	}
 	if v := rec.Facts["a"]; v.Kind != KindBool || v.Tier != TierSeen || !v.Bool {
@@ -41,6 +41,12 @@ func TestParseLeaseReadsEveryKindOfFact(t *testing.T) {
 	}
 	if v := rec.Facts["f"]; v.Kind != KindUnknown || v.Tier != TierUnknown {
 		t.Errorf("f: %+v", v)
+	}
+	if v := rec.Facts["g"]; v.Kind != KindBool || v.Tier != TierDesigned || v.Bool {
+		t.Errorf("g: %+v", v)
+	}
+	if v := rec.Facts["h"]; v.Kind != KindString || v.Tier != TierDesigned || v.Str != "browser_js" {
+		t.Errorf("h: %+v", v)
 	}
 }
 
@@ -142,6 +148,10 @@ func TestParseLeaseRefusals(t *testing.T) {
 		{"Unknown tier with value", with(`{"value":null,"tier":"Unknown"}`, `{"value":true,"tier":"Unknown"}`), errs.Parse, errs.InvalidValue, "facts", "PA-0007.3"},
 		{"Seen tier with null", with(`{"value":true,"tier":"Seen"}`, `{"value":null,"tier":"Seen"}`), errs.Parse, errs.InvalidValue, "facts", "PA-0007.3"},
 		{"Stated tier with null", with(`{"value":-12,"tier":"Stated"}`, `{"value":null,"tier":"Stated"}`), errs.Parse, errs.InvalidValue, "facts", "PA-0007.3"},
+		{"Designed tier with null", with(`{"value":true,"tier":"Seen"}`, `{"value":null,"tier":"Designed"}`), errs.Parse, errs.InvalidValue, "facts", "PA-0007.3"},
+		{"lower-case designed tier", with(`{"value":true,"tier":"Seen"}`, `{"value":true,"tier":"designed"}`), errs.Parse, errs.InvalidValue, "facts", "PA-0007.3"},
+		{"Designed tier with an object", with(`{"value":true,"tier":"Seen"}`, `{"value":{"x":1},"tier":"Designed"}`), errs.Parse, errs.InvalidType, "facts", "PA-0007.3"},
+		{"a tier of the wrong name", with(`{"value":true,"tier":"Seen"}`, `{"value":true,"tier":"Guaranteed"}`), errs.Parse, errs.InvalidValue, "facts", "PA-0007.3"},
 		{"fraction", with(`-12`, `1.5`), errs.Parse, errs.InvalidType, "facts", "PA-0007.3"},
 		{"exponent", with(`-12`, `1e3`), errs.Parse, errs.InvalidType, "facts", "PA-0007.3"},
 		{"too big for 64 bits", with(`-12`, `9223372036854775808`), errs.Parse, errs.InvalidType, "facts", "PA-0007.3"},

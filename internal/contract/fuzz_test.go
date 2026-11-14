@@ -42,6 +42,8 @@ func FuzzParse(f *testing.F) {
 	f.Add([]byte(`[]`))
 	f.Add([]byte(`{"lease":"PA-0001.1","lease":"PA-0001.1"}`))
 	f.Add([]byte(`{"lease":"PA-0001.1","kind":"item","id":"PA-0001","state":"observed","lane":"normal","attempt":1,"expires":"2026-01-05T09:01:00Z","results":{"sextant":{"category":"pricing","facts":{"f":{"value":null,"tier":"Seen"}}}}}`))
+	f.Add([]byte(`{"lease":"PA-0001.1","kind":"item","id":"PA-0001","state":"observed","lane":"normal","attempt":1,"expires":"2026-01-05T09:01:00Z","results":{"sextant":{"category":"pricing","facts":{"f":{"value":false,"tier":"Designed"}}}}}`))
+	f.Add([]byte(`{"lease":"PA-0001.1","kind":"item","id":"PA-0001","state":"observed","lane":"normal","attempt":1,"expires":"2026-01-05T09:01:00Z","results":{"sextant":{"category":"pricing","facts":{"f":{"value":null,"tier":"Designed"}}}}}`))
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		rec1, err1 := ParseLease(data)
