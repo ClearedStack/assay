@@ -182,7 +182,7 @@ When data is both broken and unfamiliar, `E_PARSE` wins. An error carries a code
 - **Read-only filesystem:** the same test confirms the process writes only inside its spool folder.
 - **No AI, no outside calls in the rules:** a test reads the imports of every package that decides an outcome and fails if one reaches the network, a clock, randomness or the environment.
 - **Errors leak nothing:** tests plant host names, addresses and passwords in leases and in hub failures and check that none comes back in an error or a log line.
-- **Pod hardening:** tests read `deploy/assay.yaml` and `.ko.yaml` and check each clause of the specification's hardening rule, Lazarette digest pinning, `linux/arm64` build target, node affinity and network policy.
+- **Pod hardening:** tests read `deploy/assay.yaml` and `.ko.yaml` and check each clause of the specification's hardening rule, the bare image name, the pinned Chainguard base, the `linux/arm64` build target, node affinity and network policy.
 
 ## Not yet done
 
@@ -199,7 +199,7 @@ When data is both broken and unfamiliar, `E_PARSE` wins. An error carries a code
 | **Stage** | 03 of 10 in the pipeline |
 | **Formerly** | `cs-03-evaluate` |
 | **Namespace** | `cs-workers` |
-| **Container image** | `lazarette.clearedstack.svc.cluster.local:5000/assay` |
+| **Container image** | `assay`, with the registry and digest given by a kustomize image override when deployed |
 | **Memory budget** | 30 MiB |
 | **Depends on** | [Muster](https://github.com/ClearedStack/muster) |
 | **Depended on by** | Nothing else in the platform |

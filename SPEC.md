@@ -186,7 +186,7 @@ Keeping the 1-based rule row numbers in `rules.gates` and `rules.factors` preser
 
 ### 11. Name what the specification leaves unnamed
 
-`deploy/assay.yaml` pins the container image by `sha256` digest in the cluster's local Lazarette registry (`lazarette.clearedstack.svc.cluster.local:5000/assay@sha256:...`), `.ko.yaml` pins the static base image by `sha256` digest in Lazarette for `linux/arm64` builds, and the pod schedules onto `arm64` nodes excluding `cm3588-plus`, setting:
+`deploy/assay.yaml` names the container image `assay` only (the deployer gives the registry and `sha256` digest with a kustomize image override), `.ko.yaml` pins the Chainguard static base image by `sha256` digest for `linux/arm64` builds, and the pod schedules onto `arm64` nodes excluding `cm3588-plus`, setting:
 
 - Muster's service address and port (`http://muster.clearedstack.svc.cluster.local:8080`, matching Muster's `:8080` listener).
 - The labels that select Muster's pods (`app.kubernetes.io/name: muster` in `clearedstack`).
