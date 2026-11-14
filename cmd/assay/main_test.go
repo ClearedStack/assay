@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/ClearedStack/assay/internal/contract"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden files from the current behaviour")
@@ -158,8 +160,16 @@ func TestRunWithStandIn(t *testing.T) {
 		return string(data)
 	}
 	// The urgent item first, then the normal lane in file order, then
-	// backfill. A decided item prints its outcome; the other two print the
-	// call that was made, which is all Muster is told.
+	// backfill. A decided item prints the result that was sent: the
+	// evaluation with the outcome inside it. The other two print the call
+	// that was made, which is all Muster is told.
+	sent := func(name string) string {
+		var o contract.Outcome
+		if err := json.Unmarshal([]byte(read(name)), &o); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		return string(contract.Result(&o))
+	}
 	idOf := func(name string) string {
 		var head struct {
 			ID string `json:"id"`
@@ -170,10 +180,10 @@ func TestRunWithStandIn(t *testing.T) {
 		return head.ID
 	}
 	want := "{\n  \"id\": \"" + idOf("market/fixtures/needs-subtool-unknown-fact.input.json") + "\",\n  \"call\": \"needs_subtool\"\n}\n" +
-		read("pricing/fixtures/reject.golden.json") +
-		read("pricing/fixtures/build.golden.json") +
+		sent("pricing/fixtures/reject.golden.json") +
+		sent("pricing/fixtures/build.golden.json") +
 		"{\n  \"id\": \"" + idOf("proposal/fixtures/parse-wrong-type.input.json") + "\",\n  \"call\": \"fail\",\n  \"code\": \"E_PARSE\"\n}\n" +
-		read("cyber/fixtures/park.golden.json")
+		sent("cyber/fixtures/park.golden.json")
 	if out != want {
 		t.Errorf("unexpected output from the stand-in run:\n%s\n--- want ---\n%s", out, want)
 	}

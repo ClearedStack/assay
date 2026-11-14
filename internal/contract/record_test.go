@@ -1,6 +1,8 @@
 package contract
 
 import (
+	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -197,5 +199,35 @@ func TestEncodeIsStable(t *testing.T) {
 func TestStatesAreSpelledAsMusterSpellsThem(t *testing.T) {
 	if StateScored != "scored" || StateScreenedOut != "screened_out" || StateNeedsSubtool != "needs_subtool" || StateObserved != "observed" {
 		t.Error("state names are fixed by Muster's contract")
+	}
+}
+
+// TestResultIsAnEvaluation holds the result sent to Muster to the form
+// Logbook accepts for an evaluation.
+func TestResultIsAnEvaluation(t *testing.T) {
+	compact := func(data []byte) string {
+		var buf bytes.Buffer
+		if err := json.Compact(&buf, data); err != nil {
+			t.Fatal(err)
+		}
+		return buf.String()
+	}
+	total, flag := 17, true
+	scored := &Outcome{Contract: Version, Worker: Worker, ItemID: "PA-0007", State: StateScored,
+		Rules:   &RulesRef{Rubric: 1, Profile: "pricing", ProfileVersion: 1},
+		Gates:   []GateResult{{ID: "one_job", Name: "One job", Pass: true, Rule: 2, Reason: "It does one job."}},
+		Factors: []FactorResult{{ID: "need", Name: "Need", Rating: 3, Weight: 4, Points: 12, Rule: 1}, {ID: "gap", Name: "Gap", Rating: 5, Weight: 1, Points: 5, Rule: 1}},
+		Total:   &total, Recommendation: "Build", SplitMergeReview: &flag}
+	want := `{"profile":"pricing","gates":{"one_job":{"passed":true}},"factors":{"gap":{"rating":5,"weight":1},"need":{"rating":3,"weight":4}},"score":17,"recommendation":"build","split_flag":true,"outcome":` + compact(Encode(scored)) + `}`
+	if got := compact(Result(scored)); got != want {
+		t.Errorf("scored result:\n got %s\nwant %s", got, want)
+	}
+
+	screened := &Outcome{Contract: Version, Worker: Worker, ItemID: "PA-0008", State: StateScreenedOut,
+		Rules: &RulesRef{Rubric: 1, Profile: "pricing", ProfileVersion: 1},
+		Gates: []GateResult{{ID: "public_source", Name: "Public source", Pass: false, Rule: 1, Reason: "Not public."}}}
+	want = `{"profile":"pricing","gates":{"public_source":{"passed":false,"reason":"Not public."}},"outcome":` + compact(Encode(screened)) + `}`
+	if got := compact(Result(screened)); got != want {
+		t.Errorf("screened-out result:\n got %s\nwant %s", got, want)
 	}
 }

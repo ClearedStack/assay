@@ -39,7 +39,7 @@ You need Go 1.24 or later. Nothing else.
 # Evaluate one lease reply and read the result
 go run ./cmd/assay eval tools/rubric-profiles/pricing/fixtures/build.input.json
 
-# The same result as JSON, which is the result Assay sends Muster
+# The same outcome as JSON. Assay sends Muster this under "outcome", beside the evaluation Logbook records
 go run ./cmd/assay eval -format json tools/rubric-profiles/pricing/fixtures/build.input.json
 
 # Evaluate several and print the scored ones in order
@@ -93,7 +93,7 @@ Split/merge review: no
 | `ASSAY_POLL_INTERVAL` | `5s` | Wait after Muster had nothing to offer. |
 | `ASSAY_HUB_TIMEOUT` | `10s` | Limit on each call to Muster. |
 
-The image is built from source with [`ko`](https://ko.build); there is no Dockerfile. [`.ko.yaml`](.ko.yaml) holds the build settings and [`deploy/assay.yaml`](deploy/assay.yaml) the ServiceAccount, the hardened Deployment and the default-deny NetworkPolicy.
+The image is built from source with [`ko`](https://ko.build); there is no Dockerfile. [`.ko.yaml`](.ko.yaml) holds the build settings and [`deploy/assay.yaml`](deploy/assay.yaml) the ServiceAccount, the hardened Deployment and the default-deny NetworkPolicy. [`deploy/`](deploy) is a kustomize directory for Argo CD. The image is named `assay` there and nothing more: whoever deploys it gives the registry and the digest with an image override.
 
 ### What Assay says to Muster
 
@@ -190,7 +190,7 @@ When data is both broken and unfamiliar, `E_PARSE` wins. An error carries a code
 - **Sextant and Assay do not yet agree on an observation.** Assay scores `results.sextant` when it holds a `category` and a flat map of `facts` (see "Proposed changes" in `SPEC.md`). Sextant's first build writes a different shape, with no category. Until the two agree, every real item reaches Assay as "valid and unfamiliar" and is paused with `needs_subtool`. Nothing is scored wrongly, but nothing is scored. This is the next thing to settle.
 - **No running Muster yet.** Assay follows Muster's contract v1 and replays its examples, but has only ever talked to its own stand-in.
 - **The thresholds are placeholders.** `SPEC.md` fixes the gates, the weights and the recommendation bands, and those are implemented exactly. It does not say what earns a 3 rather than a 4 on any factor. The thresholds and verb lists in the five profiles are made up so the engine has something to run. They need a decision by the project owner before any score is published.
-- **Three deployment values are unknown** and marked provisional in `deploy/assay.yaml`: Muster's address and port, the labels on Muster's pods, and the name of the "Standard (Workers)" priority class (left out).
+- **One deployment value is unknown** and left out of `deploy/assay.yaml`: the name of the "Standard (Workers)" priority class.
 - **Never deployed.** Signing with `cosign`, storing in Lazarette and applying with Shipkeeper are done by other components and have not been tried.
 - **Reporting and publishing are indirect.** Assay reports to Muster only. Muster gives Bellbuoy an incident step for each failed or paused item, and exposes results through the `pub.*` views. The reason and fingerprint of an error do not travel in Muster's calls; they are in Assay's log.
 - **No liveness or readiness probe.** The specification describes none, and the network policy admits no inbound connection.
