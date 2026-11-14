@@ -41,7 +41,7 @@ var (
 	// The form Muster gives item identifiers: PA-0001 up to PA-999999999.
 	itemIDPattern = regexp.MustCompile(`^PA-([0-9]{4}|[1-9][0-9]{4,8})$`)
 	// A lease identifier is Muster's to choose, and is handed back as it was
-	// given. Its examples include PA-0001.2.1 and incident:PA-0001.3.1.
+	// given. Its examples include PA-0001.2.1 and incident:PA-0001.2.1.
 	leaseIDPattern  = regexp.MustCompile(`^[A-Za-z0-9._~:-]{1,128}$`)
 	categoryPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
 	// A timestamp such as 2026-01-05T09:01:00Z. Assay never reads the
