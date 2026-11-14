@@ -29,6 +29,7 @@ type factDef struct {
 	typ      factType
 	values   map[string]bool // enum and list
 	min, max int64           // int
+	designed bool            // may carry tier Designed
 }
 
 // cond is one condition on one fact. Every operator present must hold.
@@ -82,6 +83,8 @@ type factYAML struct {
 	Values []string
 	Min    *int64
 	Max    *int64
+
+	Designed *bool
 }
 
 type condYAML struct {
@@ -133,8 +136,8 @@ func readProfile(data []byte) (*profileYAML, error) {
 	}
 
 	for _, name := range factNames {
-		f := facts[name].Read("type", "values", "min", "max")
-		fy := factYAML{Type: f.String("type"), Values: f.OptStrings("values"), Min: f.OptInt("min"), Max: f.OptInt("max")}
+		f := facts[name].Read("type", "values", "min", "max", "designed")
+		fy := factYAML{Type: f.String("type"), Values: f.OptStrings("values"), Min: f.OptInt("min"), Max: f.OptInt("max"), Designed: f.OptBool("designed")}
 		if err := f.Err(); err != nil {
 			return nil, fmt.Errorf("fact %q: %w", name, err)
 		}
@@ -353,7 +356,7 @@ func parseProfile(data []byte, dir string, rubric *Rubric) (*Profile, error) {
 }
 
 func parseFact(fy factYAML) (factDef, error) {
-	def := factDef{typ: factType(fy.Type)}
+	def := factDef{typ: factType(fy.Type), designed: fy.Designed != nil && *fy.Designed}
 	needNone := func(what string, present bool) error {
 		if present {
 			return fmt.Errorf("%s does not apply to type %s", what, fy.Type)
@@ -466,6 +469,9 @@ func parseCond(name string, def factDef, cy condYAML) (cond, error) {
 			if tier != contract.TierSeen && tier != contract.TierDesigned && tier != contract.TierStated && tier != contract.TierUnknown {
 				return c, fmt.Errorf("tier %q must be Seen, Designed, Stated or Unknown", rawTier)
 			}
+			if tier == contract.TierDesigned && !def.designed {
+				return c, fmt.Errorf("tier Designed is not allowed on fact %q: declare designed: true under facts", name)
+			}
 			if c.tiers[tier] {
 				return c, fmt.Errorf("tier %q is listed twice", rawTier)
 			}
@@ -475,7 +481,8 @@ func parseCond(name string, def factDef, cy condYAML) (cond, error) {
 			return c, fmt.Errorf("tier Unknown has no value and cannot be combined with a value operator")
 		}
 	} else {
-		c.tiers = map[contract.Tier]bool{contract.TierSeen: true, contract.TierDesigned: true, contract.TierStated: true}
+		c.tiers = map[contract.Tier]bool{contract.TierSeen: true, contract.TierStated: true}
+		c.tiers[contract.TierDesigned] = def.designed
 	}
 
 	if count == 0 && cy.TierIn == nil {
@@ -627,6 +634,9 @@ func (p *Profile) CheckFacts(facts map[string]contract.Value) *errs.Error {
 		v := facts[name]
 		if v.Kind == contract.KindUnknown {
 			continue
+		}
+		if v.Tier == contract.TierDesigned && !def.designed {
+			return errs.New(errs.NeedsSubtool, errs.NoMatchingRule, name, p.Category)
 		}
 		switch def.typ {
 		case typeEnum:

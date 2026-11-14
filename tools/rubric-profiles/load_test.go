@@ -181,10 +181,11 @@ func TestLoadRefusesBadRuleData(t *testing.T) {
 		{"lower-case tier in tier_in", "pricing/profile.yaml", "tier_in: [Seen, Designed]", "tier_in: [Seen, designed]", "Seen, Designed, Stated or Unknown"},
 		{"duplicate tier in tier_in", "pricing/profile.yaml", "tier_in: [Seen, Designed]", "tier_in: [Seen, Seen]", "listed twice"},
 		{"Unknown tier with value operator", "pricing/profile.yaml", "tier_in: [Seen, Designed]", "tier_in: [Unknown]", "Unknown has no value"},
+		{"Designed in tier_in on a fact that does not allow it", "pricing/profile.yaml", "connect_src_self: {type: bool, designed: true}", "connect_src_self: {type: bool}", "Designed is not allowed"},
 		{"free-text fact type forbidden", "pricing/profile.yaml", "source_public: {type: bool}", "source_public: {type: text}", "unknown type"},
 		{"gate with no rows", "pricing/profile.yaml", "  arithmetic_not_advice:\n    - when: {output_kinds: {any_in: [legal_advice, compliance_determination]}}\n      pass: false\n      reason: \"It renders advice or a legal conclusion.\"\n    - when: {output_kinds: {all_in: [computed_number, structured_data, citation_lookup]}}\n      pass: true\n      reason: \"It computes numbers, structures data or looks up citations.\"\n", "  arithmetic_not_advice: []\n", "has no rows"},
 		{"gate the rubric does not have", "pricing/profile.yaml", "\nfactors:\n", "\n  sixth_gate:\n    - when: {needs_backend: {eq: true}}\n      pass: false\n      reason: \"No.\"\n\nfactors:\n", "rubric does not have"},
-		{"int without bounds", "pricing/profile.yaml", "task_count: {type: int, min: 1, max: 100}", "task_count: {type: int}", "min and max"},
+		{"int without bounds", "pricing/profile.yaml", "task_count: {type: int, min: 1, max: 100, designed: true}", "task_count: {type: int, designed: true}", "min and max"},
 		{"unknown fact type", "pricing/profile.yaml", "source_public: {type: bool}", "source_public: {type: boolean}", "unknown type"},
 		{"bool with values", "pricing/profile.yaml", "source_public: {type: bool}", "source_public: {type: bool, values: [yes_please]}", "does not apply"},
 		{"fact nobody reads", "pricing/profile.yaml", "source_public: {type: bool}", "source_public: {type: bool}\n  spare_fact: {type: bool}", "no rule reads it"},
@@ -315,11 +316,22 @@ func TestTierConditions(t *testing.T) {
 		t.Fatalf("Designed emits_tracking=true should fail private_by_design, got %+v, %v", d, ok)
 	}
 
-	// Designed counts as an ordinary tier for every other fact.
+	// Designed is refused on a fact that describes the source or the demand
+	// rather than the tool to be built: no rule matches, so the item pauses.
 	designedJob := pricingFacts()
 	designedJob["core_job"] = contract.Value{Kind: contract.KindString, Tier: contract.TierDesigned, Str: "rate_calculation"}
-	if d, ok := p.Gate("one_job", designedJob); !ok || !d.Pass {
-		t.Fatalf("Designed core_job should pass one_job, got %+v, %v", d, ok)
+	if d, ok := p.Gate("one_job", designedJob); ok {
+		t.Fatalf("Designed core_job must not pass one_job, got %+v", d)
+	}
+	perr := p.CheckFacts(designedJob)
+	if perr == nil || perr.Code != errs.NeedsSubtool || perr.Reason != errs.NoMatchingRule {
+		t.Fatalf("Designed core_job should pause with no_matching_rule, got %v", perr)
+	}
+	designedNeed := pricingFacts()
+	designedNeed["need_signals"] = contract.Value{Kind: contract.KindInt, Tier: contract.TierDesigned, Int: 20}
+	perr = p.CheckFacts(designedNeed)
+	if perr == nil || perr.Code != errs.NeedsSubtool || perr.Reason != errs.NoMatchingRule {
+		t.Fatalf("Designed need_signals should pause with no_matching_rule, got %v", perr)
 	}
 
 	// Unknown fact passes CheckFacts and fails closed (ok=false) in rule evaluation.

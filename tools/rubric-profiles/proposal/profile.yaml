@@ -11,7 +11,9 @@ profile: proposal
 # ClearedStack template it will be generated from (strict CSP connect-src
 # 'self', offline, no account) and proved after the build by Shakedown. A
 # vendor's own claim (Stated) still pauses the item. Every other fact reads
-# Seen, Designed or Stated.
+# Seen or Stated, and Designed only on the eleven facts that describe the
+# tool to be built (designed: true under facts). Designed on any other fact
+# pauses the item with E_NEEDS_SUBTOOL.
 version: 4
 
 # Every fact a proposal record must carry. Each fact comes from Sextant in a
@@ -32,31 +34,33 @@ facts:
   client_runtime:
     type: enum
     values: [browser_js, browser_wasm, desktop_native, server_side]
-  needs_backend: {type: bool}
-  needs_remote_api: {type: bool}
-  largest_input_kb: {type: int, min: 0, max: 10000000}
+    designed: true
+  needs_backend: {type: bool, designed: true}
+  needs_remote_api: {type: bool, designed: true}
+  largest_input_kb: {type: int, min: 0, max: 10000000, designed: true}
 
   # What it would ask of the person using it.
-  works_offline: {type: bool}
-  needs_account: {type: bool}
-  emits_tracking: {type: bool}
-  connect_src_self: {type: bool}
+  works_offline: {type: bool, designed: true}
+  needs_account: {type: bool, designed: true}
+  emits_tracking: {type: bool, designed: true}
+  connect_src_self: {type: bool, designed: true}
 
   # What it does (closed job vocabulary aligned with Sextant's clean-room rules).
-  task_count: {type: int, min: 1, max: 100}
+  task_count: {type: int, min: 1, max: 100, designed: true}
   core_job:
     type: enum
     values: [page_budget_check, section_count, compliance_matrix, format_check, requirement_extraction, acronym_table_check, date_calculation, amount_calculation, eligibility_check, record_search, multi_workflow, portal_suite, open_ended_advisory]
   output_kinds:
     type: list
     values: [computed_number, structured_data, citation_lookup, legal_advice, compliance_determination]
+    designed: true
 
   # Evidence for the rubric.
   need_signals: {type: int, min: 0, max: 100000}
   best_alternative:
     type: enum
     values: [none, paid_only, outdated, partial, complete]
-  est_source_lines: {type: int, min: 1, max: 1000000}
+  est_source_lines: {type: int, min: 1, max: 1000000, designed: true}
   worked_examples: {type: int, min: 0, max: 10000}
   reference_updates_per_year: {type: int, min: 0, max: 1000}
   # Proposal only: how many document templates the tool would have to carry.

@@ -151,7 +151,7 @@ The tests enforce three things about the rules:
 
 | Code | Meaning | What Assay does |
 | --- | --- | --- |
-| `E_NEEDS_SUBTOOL` | The data was valid and unfamiliar: an observation with no category or a category with no profile, a field or fact nobody declared, a value outside a declared set, an `Unknown` fact or unverified `Stated` privacy claim (only `Seen` or `Designed` satisfies the privacy gate), or a case no row covers. | Pauses that item with the `needs_subtool` call and carries on. Muster replays it when a new build of Assay is deployed. |
+| `E_NEEDS_SUBTOOL` | The data was valid and unfamiliar: an observation with no category or a category with no profile, a field or fact nobody declared, a value outside a declared set, an `Unknown` fact or unverified `Stated` privacy claim (only `Seen` or `Designed` satisfies the privacy gate; `Designed` is accepted only on the facts a profile marks `designed: true`), or a case no row covers. | Pauses that item with the `needs_subtool` call and carries on. Muster replays it when a new build of Assay is deployed. |
 | `E_PARSE` | The data was broken: not JSON, a repeated key, a missing or mistyped field, a tier/null violation, a number out of range, a lease for something that is not an observed item. | Reports it with the `fail` call. Muster holds the item until the owner releases it. |
 | `E_TIMEOUT` | Muster did not answer in time, or is not serving. | Keeps the finished report in the spool and retries, waiting longer each time (1 s doubling to 60 s). |
 

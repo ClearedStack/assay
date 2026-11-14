@@ -77,10 +77,9 @@ const (
 	KindList
 )
 
-// Value is one tiered fact: either Unknown (with a null value) or Seen,
-// Stated or Designed
-// carrying a boolean, a whole number, a string or a list of strings. Nothing
-// else is allowed among the facts.
+// Value is one tiered fact: either Unknown (with a null value) or a Seen,
+// Stated or Designed fact carrying a boolean, a whole number, a string or a
+// list of strings. Nothing else is allowed among the facts.
 type Value struct {
 	Kind Kind
 	Tier Tier

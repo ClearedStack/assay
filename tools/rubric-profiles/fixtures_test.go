@@ -133,3 +133,55 @@ func gatePassed(out *contract.Outcome, gate string) bool {
 	}
 	return false
 }
+
+// designedFacts are the facts about the tool still to be built, the only ones
+// that may carry Designed. Sextant emits exactly these as Designed.
+var designedFacts = map[string]bool{
+	"client_runtime": true, "connect_src_self": true, "emits_tracking": true,
+	"est_source_lines": true, "largest_input_kb": true, "needs_account": true,
+	"needs_backend": true, "needs_remote_api": true, "output_kinds": true,
+	"task_count": true, "works_offline": true,
+}
+
+// TestDesignedOnlyOnBuildFacts sets each fact of each profile to Designed in
+// turn. The eleven facts about the built tool still score; any other fact
+// pauses the item with E_NEEDS_SUBTOOL no_matching_rule, as an unaccepted
+// tier does everywhere else.
+func TestDesignedOnlyOnBuildFacts(t *testing.T) {
+	eng := engine.New(loadFromDisk(t))
+	for _, category := range []string{"pricing", "proposal", "cyber", "market", "devsecops"} {
+		raw, err := os.ReadFile(filepath.Join(category, "fixtures", "build.input.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var base map[string]any
+		if err := json.Unmarshal(raw, &base); err != nil {
+			t.Fatal(err)
+		}
+		names := base["results"].(map[string]any)["sextant"].(map[string]any)["facts"].(map[string]any)
+		for fact := range names {
+			t.Run(category+"/"+fact, func(t *testing.T) {
+				var doc map[string]any
+				if err := json.Unmarshal(raw, &doc); err != nil {
+					t.Fatal(err)
+				}
+				facts := doc["results"].(map[string]any)["sextant"].(map[string]any)["facts"].(map[string]any)
+				facts[fact].(map[string]any)["tier"] = "Designed"
+				in, err := json.Marshal(doc)
+				if err != nil {
+					t.Fatal(err)
+				}
+				out := eng.Evaluate(in)
+				if designedFacts[fact] {
+					if out.State != contract.StateScored {
+						t.Fatalf("Designed %s should score, got state %q error %v", fact, out.State, out.Error)
+					}
+					return
+				}
+				if out.State != contract.StateNeedsSubtool || out.Error == nil || out.Error.Reason != errs.NoMatchingRule {
+					t.Fatalf("Designed %s should pause with no_matching_rule, got state %q error %v", fact, out.State, out.Error)
+				}
+			})
+		}
+	}
+}
