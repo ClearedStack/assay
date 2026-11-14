@@ -163,8 +163,8 @@ func TestLoadRefusesBadRuleData(t *testing.T) {
 		new  string
 		want string // part of the error
 	}{
-		{"unknown key in profile", "pricing/profile.yaml", "version: 2", "version: 2\ndefault_rating: 3", "default_rating"},
-		{"second YAML document", "pricing/profile.yaml", "version: 2", "version: 2\n---\nversion: 3", ""},
+		{"unknown key in profile", "pricing/profile.yaml", "version: 3", "version: 3\ndefault_rating: 3", "default_rating"},
+		{"second YAML document", "pricing/profile.yaml", "version: 3", "version: 3\n---\nversion: 4", ""},
 		{"profile name differs from folder", "pricing/profile.yaml", "profile: pricing", "profile: prices", "folder"},
 		{"condition on undeclared fact", "pricing/profile.yaml", "- when: {needs_backend: {eq: true}}", "- when: {has_backend: {eq: true}}", "undeclared fact"},
 		{"catch-all row", "pricing/profile.yaml", "- when: {needs_backend: {eq: true}}", "- when: {}", "at least one condition"},
@@ -250,9 +250,15 @@ func TestFixturesFolderIsNotACategory(t *testing.T) {
 }
 
 func pricingFacts() map[string]contract.Value {
-	b := func(v bool) contract.Value { return contract.Value{Kind: contract.KindBool, Tier: contract.TierSeen, Bool: v} }
-	i := func(v int64) contract.Value { return contract.Value{Kind: contract.KindInt, Tier: contract.TierSeen, Int: v} }
-	s := func(v string) contract.Value { return contract.Value{Kind: contract.KindString, Tier: contract.TierSeen, Str: v} }
+	b := func(v bool) contract.Value {
+		return contract.Value{Kind: contract.KindBool, Tier: contract.TierSeen, Bool: v}
+	}
+	i := func(v int64) contract.Value {
+		return contract.Value{Kind: contract.KindInt, Tier: contract.TierSeen, Int: v}
+	}
+	s := func(v string) contract.Value {
+		return contract.Value{Kind: contract.KindString, Tier: contract.TierSeen, Str: v}
+	}
 	return map[string]contract.Value{
 		"source_kind": s("far"), "source_public": b(true), "source_precision": s("exact_formula"),
 		"client_runtime": s("browser_js"), "needs_backend": b(false), "needs_remote_api": b(false), "largest_input_kb": i(40),
@@ -396,6 +402,53 @@ func TestNumericTablesHaveNoHoles(t *testing.T) {
 				if n != 1 {
 					t.Fatalf("%s: factor %s: %s = %d is answered by %d rows", category, id, single, v, n)
 				}
+			}
+		}
+	}
+}
+
+func TestCatalogAndSextantCoreJobs(t *testing.T) {
+	set, err := Load(os.DirFS("."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sextantBaseJobs := []string{
+		"date_calculation",
+		"amount_calculation",
+		"eligibility_check",
+		"record_search",
+	}
+	catalogJobs := map[string][]string{
+		"pricing":   {"rate_calculation", "amount_calculation", "cost_allocation", "price_escalation", "price_table_lookup", "interest_calculation"},
+		"proposal":  {"page_budget_check", "section_count", "compliance_matrix", "format_check", "requirement_extraction", "acronym_table_check"},
+		"cyber":     {"control_mapping", "score_calculation", "requirement_tally", "citation_lookup", "marking_generation", "schema_validation"},
+		"market":    {"record_search", "set_aside_filter", "size_standard_check", "code_lookup", "clause_crosswalk"},
+		"devsecops": {"config_validation", "manifest_lint", "format_conversion", "policy_check", "schema_diff", "certificate_check", "checksum_verification"},
+	}
+
+	for _, category := range set.Categories() {
+		p := set.Match(category)
+		if p.Version != 3 {
+			t.Errorf("%s: got profile version %d, want 3", category, p.Version)
+		}
+		def, ok := p.facts["core_job"]
+		if !ok {
+			t.Fatalf("%s: missing core_job fact", category)
+		}
+		wantJobs := append([]string{}, sextantBaseJobs...)
+		wantJobs = append(wantJobs, catalogJobs[category]...)
+		for _, job := range wantJobs {
+			if !def.values[job] {
+				t.Errorf("%s: core_job enum does not include %q", category, job)
+				continue
+			}
+			facts := map[string]contract.Value{
+				"task_count": {Kind: contract.KindInt, Tier: contract.TierSeen, Int: 1},
+				"core_job":   {Kind: contract.KindString, Tier: contract.TierSeen, Str: job},
+			}
+			d, matched := p.Gate("one_job", facts)
+			if !matched || !d.Pass {
+				t.Errorf("%s: one_job did not pass single-job archetype %q (matched=%v, decision=%+v)", category, job, matched, d)
 			}
 		}
 	}
