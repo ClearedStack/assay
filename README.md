@@ -58,14 +58,14 @@ go test ./...
 ```text
 Item:     PA-4001
 Category: pricing
-Rules:    rubric v1, profile pricing v1
+Rules:    rubric v1, profile pricing v2
 State:    scored
 
 Knockout gates
   PASS  Public source           The rules come from officially released public material.
   PASS  Runs in the browser     It runs entirely client-side.
   PASS  Private by design       It works offline, with no account, no tracking and connect-src 'self'.
-  PASS  One job                 It does one job, stated in one verb-first sentence.
+  PASS  One job                 It performs one focused job from the category's closed job vocabulary.
   PASS  Arithmetic, not advice  It computes numbers, structures data or looks up citations.
 
 Rubric
@@ -93,7 +93,7 @@ Split/merge review: no
 | `ASSAY_POLL_INTERVAL` | `5s` | Wait after Muster had nothing to offer. |
 | `ASSAY_HUB_TIMEOUT` | `10s` | Limit on each call to Muster. |
 
-The image is built from source with [`ko`](https://ko.build); there is no Dockerfile. [`.ko.yaml`](.ko.yaml) holds the build settings and [`deploy/assay.yaml`](deploy/assay.yaml) the ServiceAccount, the hardened Deployment (pinned by digest in Lazarette, `arm64` node affinity excluding `cm3588-plus`) and the default-deny NetworkPolicy.
+The image is built from source with [`ko`](https://ko.build); there is no Dockerfile. [`.ko.yaml`](.ko.yaml) pins the static base image by digest in Lazarette for reproducible `linux/arm64` builds, and [`deploy/assay.yaml`](deploy/assay.yaml) holds the ServiceAccount, the hardened Deployment (pinned by digest in Lazarette, `arm64` node affinity excluding `cm3588-plus`) and the default-deny NetworkPolicy.
 
 ### What Assay says to Muster
 
@@ -121,12 +121,12 @@ No threshold lives in Go code. Everything is under [`tools/rubric-profiles/`](to
 | --- | --- | --- |
 | Shared rubric | `rubric.yaml` | The five gates, the seven factors and their weights, the recommendation bands, the split/merge condition and the tie-breaker order. A test holds these to the numbers in `SPEC.md`. |
 | Matching rule | `<category>/match.yaml` | Which items a profile takes. |
-| Logic | `<category>/profile.yaml` | The facts an observation of that category must carry, and a decision table for each gate and each factor. |
+| Logic | `<category>/profile.yaml` | Closed-vocabulary fact declarations (`{value, tier}` envelopes, zero free text) and a decision table for each gate and each factor (`version: 2`). |
 | Fixtures | `<category>/fixtures/` | Saved lease replies (`*.input.json`) and the exact outcome expected for each (`*.golden.json`). |
 
 There are five profiles: `pricing`, `proposal`, `cyber`, `market` and `devsecops`.
 
-A decision table is a list of rows, read top to bottom. The first row whose conditions all hold decides. **There is no default row.** If no row matches, the item is paused with `E_NEEDS_SUBTOOL` and the rest of the queue carries on.
+A decision table is a list of rows, read top to bottom. The first row whose conditions all hold decides. **There is no default row.** If no row matches (including when a fact carries `tier: "Unknown"`, or when `emits_tracking` / `connect_src_self` carries `tier: "Stated"` instead of `"Seen"`), the item is paused with `E_NEEDS_SUBTOOL` and the rest of the queue carries on.
 
 The tests enforce three things about the rules:
 
@@ -145,8 +145,8 @@ The tests enforce three things about the rules:
 
 | Code | Meaning | What Assay does |
 | --- | --- | --- |
-| `E_NEEDS_SUBTOOL` | The data was valid and unfamiliar: an observation with no category or a category with no profile, a field or fact nobody declared, a value outside a declared set, or a case no row covers. | Pauses that item with the `needs_subtool` call and carries on. Muster replays it when a new build of Assay is deployed. |
-| `E_PARSE` | The data was broken: not JSON, a repeated key, a missing or mistyped field, a number out of range, a lease for something that is not an observed item. | Reports it with the `fail` call. Muster holds the item until the owner releases it. |
+| `E_NEEDS_SUBTOOL` | The data was valid and unfamiliar: an observation with no category or a category with no profile, a field or fact nobody declared, a value outside a declared set, an `Unknown` fact or unverified `Stated` privacy claim, or a case no row covers. | Pauses that item with the `needs_subtool` call and carries on. Muster replays it when a new build of Assay is deployed. |
+| `E_PARSE` | The data was broken: not JSON, a repeated key, a missing or mistyped field, a tier/null violation, a number out of range, a lease for something that is not an observed item. | Reports it with the `fail` call. Muster holds the item until the owner releases it. |
 | `E_TIMEOUT` | Muster did not answer in time, or is not serving. | Keeps the finished report in the spool and retries, waiting longer each time (1 s doubling to 60 s). |
 
 When data is both broken and unfamiliar, `E_PARSE` wins. An error carries a code, a fixed reason word, sometimes the name of a rule or declared fact, and a fingerprint for deduplication. It never repeats text from the input, so it cannot name a machine, an address or a credential.
@@ -159,7 +159,7 @@ When data is both broken and unfamiliar, `E_PARSE` wins. An error carries a code
 | [`PROMPT.md`](PROMPT.md) | The prompt this was built from. |
 | [`component.json`](component.json) | This component’s entry in the ClearedStack naming registry. |
 | [`cmd/assay/`](cmd/assay) | The command: `eval`, `rank`, `run`, `version`. |
-| [`internal/contract/`](internal/contract) | The lease reply that comes in, the evaluation outcome that goes out, and Logbook's `core.evaluation` checks. Strict parsing. |
+| [`internal/contract/`](internal/contract) | The lease reply that comes in, Sextant's `{value, tier}` fact envelope, the evaluation outcome that goes out, and Logbook's `core.evaluation` checks. Strict parsing. |
 | [`internal/engine/`](internal/engine) | Gates, rubric, recommendation, split/merge flag, tie-breakers, and the ordering. |
 | [`internal/errs/`](internal/errs) | The three public error codes. |
 | [`internal/muster/`](internal/muster) | The five calls to Muster: a small interface, the HTTP client, and an in-memory stand-in that can also be served over HTTP as a fake Muster. |
@@ -174,7 +174,7 @@ When data is both broken and unfamiliar, `E_PARSE` wins. An error carries a code
 
 ## What has been checked
 
-- **Saved examples:** 130 fixture pairs, covering every row of every decision table, plus text goldens for the command.
+- **Saved examples:** 138 fixture pairs using clean-room `{value, tier}` envelopes, covering every row of every decision table across all five `version: 2` profiles, plus text goldens for the command.
 - **Muster's contract:** all 52 of Muster's example files in `contract/v1/examples/` are replayed. Where Assay can make the request, what it sends matches the example to the byte; every answer and every refusal is acted on as the contract says. The same examples are replayed against Assay's stand-in for Muster, so the thing Assay is tested against cannot drift from the contract.
 - **Logbook and Countersign compatibility:** every golden `scored` and `screened_out` outcome is checked against Logbook's `core.check_evaluation` rules, Muster's `tx.Evaluation` projection, and Countersign's evaluation reader.
 - **Standard library only:** `go.mod` requires nothing, and a test fails if any Go file imports a package from outside the standard library and this module.
@@ -182,13 +182,12 @@ When data is both broken and unfamiliar, `E_PARSE` wins. An error carries a code
 - **Read-only filesystem:** the same test confirms the process writes only inside its spool folder.
 - **No AI, no outside calls in the rules:** a test reads the imports of every package that decides an outcome and fails if one reaches the network, a clock, randomness or the environment.
 - **Errors leak nothing:** tests plant host names, addresses and passwords in leases and in hub failures and check that none comes back in an error or a log line.
-- **Pod hardening:** tests read `deploy/assay.yaml` and check each clause of the specification's hardening rule, digest pinning, node affinity and network policy.
+- **Pod hardening:** tests read `deploy/assay.yaml` and `.ko.yaml` and check each clause of the specification's hardening rule, Lazarette digest pinning, `linux/arm64` build target, node affinity and network policy.
 
 ## Not yet done
 
-- **Sextant and Assay do not yet agree on an observation.** Assay scores `results.sextant` when it holds a `category` and a flat map of `facts` (see "Proposed changes" in `SPEC.md`). Sextant's first build writes nine tiered facts with no category. Until the two agree, every real item reaches Assay as "valid and unfamiliar" and is paused with `needs_subtool`. Nothing is scored wrongly, but nothing is scored.
-- **The thresholds are placeholders.** `SPEC.md` fixes the gates, the weights and the recommendation bands, and those are implemented exactly. It does not say what earns a 3 rather than a 4 on any factor. The thresholds and verb lists in the five profiles are made up so the engine has something to run. They need a decision by the project owner before any score is published.
-- **Image digest substitution at build time.** `deploy/assay.yaml` pins `lazarette.clearedstack.svc.cluster.local:5000/assay@sha256:0000...` as a placeholder until Keelworks builds the `linux/arm64` image, pushes it to Lazarette, signs it with `cosign`, and substitutes the real digest.
+- **Sextant needs to emit `category` and `facts` on `results.sextant`.** Assay now parses Sextant's clean-room `{value, tier}` envelopes (`Seen`, `Stated`, `Unknown` where `value` is `null` iff `tier == "Unknown"`), optional `sub_tool` and `observed_on` provenance fields, and closed-vocabulary `core_job` slugs with zero free text (see "Proposed changes" in `SPEC.md`). Until Sextant's `ready-to-deploy` update emits `category` and the category's `facts` map under `results.sextant`, observations without `category` pause cleanly with `needs_subtool`.
+- **Image digest substitution at bootstrap and build time.** `.ko.yaml` pins `lazarette.clearedstack.svc.cluster.local:5000/static@sha256:0000...` until the upstream Chainguard `static` base image is imported into Lazarette during cluster bootstrap, and `deploy/assay.yaml` pins `lazarette.clearedstack.svc.cluster.local:5000/assay@sha256:0000...` until Keelworks builds, signs, and substitutes the `linux/arm64` image digest.
 - **Cluster `PriorityClass` name and Muster ingress rule.** The Kubernetes name of the "Standard (Workers)" priority class is not yet defined in the cluster, and Muster's `NetworkPolicy` in `clearedstack` must allow ingress on TCP `8080` from `assay` in `cs-workers`.
 - **Reporting and publishing are indirect.** Assay reports to Muster only. Muster gives Bellbuoy an incident step for each failed or paused item, and exposes results through the `pub.*` views. The reason and fingerprint of an error do not travel in Muster's calls; they are in Assay's log.
 - **No liveness or readiness probe.** The specification describes none, and the network policy admits no inbound connection.

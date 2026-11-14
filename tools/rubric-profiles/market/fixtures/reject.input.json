@@ -10,30 +10,96 @@
     "sextant": {
       "category": "market",
       "facts": {
-        "source_kind": "nist_sp",
-        "source_public": true,
-        "source_precision": "lookup_table",
-        "client_runtime": "browser_js",
-        "needs_backend": false,
-        "needs_remote_api": false,
-        "largest_input_kb": 100,
-        "works_offline": true,
-        "needs_account": false,
-        "emits_tracking": false,
-        "connect_src_self": true,
-        "task_count": 1,
-        "task_sentence": "Look up the size threshold for a made-up industry code.",
-        "output_kinds": [
-          "computed_number"
-        ],
-        "need_signals": 5,
-        "best_alternative": "partial",
-        "est_source_lines": 3000,
-        "worked_examples": 1,
-        "reference_updates_per_year": 8,
-        "roadmap_phase_fit": 2,
-        "community_demand": 14,
-        "bundled_rows_k": 2000
+        "source_kind": {
+          "value": "nist_sp",
+          "tier": "Seen"
+        },
+        "source_public": {
+          "value": true,
+          "tier": "Seen"
+        },
+        "source_precision": {
+          "value": "lookup_table",
+          "tier": "Seen"
+        },
+        "client_runtime": {
+          "value": "browser_js",
+          "tier": "Seen"
+        },
+        "needs_backend": {
+          "value": false,
+          "tier": "Seen"
+        },
+        "needs_remote_api": {
+          "value": false,
+          "tier": "Seen"
+        },
+        "largest_input_kb": {
+          "value": 512,
+          "tier": "Seen"
+        },
+        "works_offline": {
+          "value": true,
+          "tier": "Seen"
+        },
+        "needs_account": {
+          "value": false,
+          "tier": "Seen"
+        },
+        "emits_tracking": {
+          "value": false,
+          "tier": "Seen"
+        },
+        "connect_src_self": {
+          "value": true,
+          "tier": "Seen"
+        },
+        "task_count": {
+          "value": 1,
+          "tier": "Seen"
+        },
+        "core_job": {
+          "value": "code_lookup",
+          "tier": "Seen"
+        },
+        "output_kinds": {
+          "value": [
+            "computed_number"
+          ],
+          "tier": "Seen"
+        },
+        "need_signals": {
+          "value": 3,
+          "tier": "Seen"
+        },
+        "best_alternative": {
+          "value": "partial",
+          "tier": "Seen"
+        },
+        "est_source_lines": {
+          "value": 2000,
+          "tier": "Seen"
+        },
+        "worked_examples": {
+          "value": 1,
+          "tier": "Seen"
+        },
+        "reference_updates_per_year": {
+          "value": 8,
+          "tier": "Seen"
+        },
+        "roadmap_phase_fit": {
+          "value": 2,
+          "tier": "Seen"
+        },
+        "community_demand": {
+          "value": 14,
+          "tier": "Seen"
+        },
+        "bundled_rows_k": {
+          "value": 500,
+          "tier": "Seen"
+        }
       }
     },
     "trawl": {

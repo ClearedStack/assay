@@ -1,5 +1,5 @@
 Rank  Item          Total  Recommendation  Tie-breakers
-1     PA-5006       90     build           2 5 4 2 14
+1     PA-5006       88     build           2 5 3 2 14
 2     PA-3001       86     build           2 4 4 4 14
 3     PA-4001       86     build           2 4 4 4 14
 4     PA-4006       82     build           2 5 3 2 14

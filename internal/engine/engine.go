@@ -90,6 +90,25 @@ func (e *Engine) Evaluate(raw []byte) *contract.Outcome {
 		})
 		factorRules = append(factorRules, contract.RuleRow{ID: f.ID, Rule: rule})
 	}
+	// Stage 4: tie-breaker values, in the rubric's order. If a fact-backed
+	// tie-breaker was observed as Unknown, pause rather than inventing a zero.
+	ties := make([]contract.TieBreaker, 0, len(rubric.TieBreakers))
+	for _, t := range rubric.TieBreakers {
+		var v int64
+		if t.Factor != "" {
+			v = int64(ratings[t.Factor])
+		} else {
+			fv := rec.Facts[t.Fact]
+			if fv.Kind == contract.KindUnknown {
+				out.Gates = nil
+				out.Rules.Gates = nil
+				return stop(out, errs.New(errs.NeedsSubtool, errs.NoMatchingRule, t.Fact, rec.Category))
+			}
+			v = fv.Int
+		}
+		ties = append(ties, contract.TieBreaker{ID: t.ID, Name: t.Name, Value: v})
+	}
+
 	out.Factors = factors
 	out.Rules.Factors = factorRules
 	out.Score = &score
@@ -98,18 +117,6 @@ func (e *Engine) Evaluate(raw []byte) *contract.Outcome {
 	out.Recommendation = rubric.Recommend(score, ratings)
 	flag := rubric.SplitMergeReview(ratings)
 	out.SplitFlag = &flag
-
-	// Stage 4: tie-breaker values, in the rubric's order.
-	ties := make([]contract.TieBreaker, 0, len(rubric.TieBreakers))
-	for _, t := range rubric.TieBreakers {
-		var v int64
-		if t.Factor != "" {
-			v = int64(ratings[t.Factor])
-		} else {
-			v = rec.Facts[t.Fact].Int
-		}
-		ties = append(ties, contract.TieBreaker{ID: t.ID, Name: t.Name, Value: v})
-	}
 	out.TieBreakers = ties
 
 	out.State = contract.StateScored

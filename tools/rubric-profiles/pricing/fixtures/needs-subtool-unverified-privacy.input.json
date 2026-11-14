@@ -1,0 +1,109 @@
+{
+  "lease": "PA-4026.1",
+  "kind": "item",
+  "id": "PA-4026",
+  "state": "observed",
+  "lane": "normal",
+  "attempt": 1,
+  "expires": "2026-01-05T09:01:00Z",
+  "results": {
+    "sextant": {
+      "category": "pricing",
+      "facts": {
+        "source_kind": {
+          "value": "far",
+          "tier": "Seen"
+        },
+        "source_public": {
+          "value": true,
+          "tier": "Seen"
+        },
+        "source_precision": {
+          "value": "exact_formula",
+          "tier": "Seen"
+        },
+        "client_runtime": {
+          "value": "browser_js",
+          "tier": "Seen"
+        },
+        "needs_backend": {
+          "value": false,
+          "tier": "Seen"
+        },
+        "needs_remote_api": {
+          "value": false,
+          "tier": "Seen"
+        },
+        "largest_input_kb": {
+          "value": 40,
+          "tier": "Seen"
+        },
+        "works_offline": {
+          "value": true,
+          "tier": "Seen"
+        },
+        "needs_account": {
+          "value": false,
+          "tier": "Seen"
+        },
+        "emits_tracking": {
+          "value": false,
+          "tier": "Stated"
+        },
+        "connect_src_self": {
+          "value": true,
+          "tier": "Seen"
+        },
+        "task_count": {
+          "value": 1,
+          "tier": "Seen"
+        },
+        "core_job": {
+          "value": "rate_calculation",
+          "tier": "Seen"
+        },
+        "output_kinds": {
+          "value": [
+            "computed_number"
+          ],
+          "tier": "Seen"
+        },
+        "need_signals": {
+          "value": 27,
+          "tier": "Seen"
+        },
+        "best_alternative": {
+          "value": "paid_only",
+          "tier": "Seen"
+        },
+        "est_source_lines": {
+          "value": 650,
+          "tier": "Seen"
+        },
+        "worked_examples": {
+          "value": 6,
+          "tier": "Seen"
+        },
+        "reference_updates_per_year": {
+          "value": 1,
+          "tier": "Seen"
+        },
+        "roadmap_phase_fit": {
+          "value": 2,
+          "tier": "Seen"
+        },
+        "community_demand": {
+          "value": 14,
+          "tier": "Seen"
+        },
+        "rate_tables": {
+          "value": 2,
+          "tier": "Seen"
+        }
+      }
+    },
+    "trawl": {
+      "source": "made-up source"
+    }
+  }
+}

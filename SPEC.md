@@ -102,18 +102,20 @@ Muster's saved examples are copied into `testdata/contract/` and replayed by a t
 
 **Gap:** the specification says Assay scores "structured JSON facts produced by Sextant" but never says what they look like. Muster's contract carries each worker's result as an opaque JSON object, so this is between Sextant and Assay. Without it no gate or factor has anything to read.
 
-**Proposal:** Assay scores `results.sextant` in the lease, which holds exactly two fields:
+**Proposal:** Assay scores `results.sextant` in the lease, aligned with Sextant's clean-room confidence-tier envelope:
 
 | Field | Type | Rule |
 | --- | --- | --- |
-| `category` | string | Lower-case token, for example `pricing`. Selects the rubric profile. |
-| `facts` | object | Flat map of fact name to value. A value is a boolean, a whole number, a string, or a list of strings. Nothing else. |
+| `category` | string | Required lower-case slug, for example `pricing`. Selects the rubric profile. |
+| `sub_tool` | string (optional) | Sextant extractor slug (`^[a-z][a-z0-9-]*$`, up to 64 characters), recorded for provenance. |
+| `observed_on` | string (optional) | Calendar date `YYYY-MM-DD` when Sextant observed the candidate. |
+| `facts` | object | Map of fact slug to `{"value": <bool\|int\|string\|[string]\|null>, "tier": "Seen"\|"Stated"\|"Unknown"}`. |
 
-Which facts an observation must carry is declared by the category's profile (`tools/rubric-profiles/<category>/profile.yaml`, under `facts`), with a type and limits for each. An observation must carry every declared fact and no other. Fractions, nulls, nested objects and repeated keys are refused. Results left by other workers, and `found`, are ignored.
+Every fact envelope must carry `value` and `tier` and no other keys, and `value` is `null` if and only if `tier` is `"Unknown"` (violations are refused with `E_PARSE`). Which facts an observation must carry is declared by the category's profile (`tools/rubric-profiles/<category>/profile.yaml`, under `facts`), with a closed type and bounds for each; free-text string types are forbidden by the profile loader. By default, value checks require `tier` in `[Seen, Stated]`, so an `Unknown` fact fails closed to `E_NEEDS_SUBTOOL` unless a rule explicitly matches `tier_in: [Unknown]`. In `private_by_design`, `emits_tracking: false` and `connect_src_self: true` explicitly require `tier_in: [Seen]` so unverified vendor self-claims (`Stated`) pause for inspection rather than passing the privacy gate. Results left by other workers, and `found`, are ignored.
 
-**Reason:** whole numbers and closed sets keep the outcome identical on every machine. Letting the profile declare the facts is what makes "unknown field not covered by `tools/rubric-profiles/<category>/`" checkable.
+**Reason:** closed sets, whole numbers and Sextant's `{value, tier}` invariant keep outcomes identical on every machine while preserving clean-room isolation (no free text from observed pages ever enters Assay) and distinguishing verified network/CSP inspection (`Seen`) from self-asserted claims (`Stated`).
 
-**Not yet agreed with Sextant.** Sextant's first build writes a different shape: nine tiered facts about a page, and no category. Assay treats such an observation as valid and unfamiliar and pauses the item (see 4). Until the two components agree, no real item will be scored.
+**Remaining handoff for Sextant.** Sextant's initial build emits tiered envelopes with `sub_tool` and `observed_on`, which Assay now accepts directly, and needs to emit `category` and the category's declared `facts` map. Until Sextant adds `category` and `facts`, observations without `category` continue to pause cleanly with `E_NEEDS_SUBTOOL`.
 
 ### 3. Define the outcome Assay hands back
 
@@ -132,7 +134,7 @@ Keeping the 1-based rule row numbers in `rules.gates` and `rules.factors` preser
 
 **Contradiction:** the failure table gives an "unknown field" `E_NEEDS_SUBTOOL`, but an unknown field also "fails contract schema validation", which the next row gives `E_PARSE`.
 
-**Proposal:** broken data is `E_PARSE`: not JSON, a repeated key, a missing or mistyped field, a number out of range, a lease for anything but an observed item. Well-formed data that is merely unfamiliar is `E_NEEDS_SUBTOOL`: an observation that names no category or a category with no profile, a field or fact nobody declared, a value outside a declared set, or a case no rule row covers. When a lease is both, `E_PARSE` is reported.
+**Proposal:** broken data is `E_PARSE`: not JSON, a repeated key, a missing or mistyped field, a tier/null mismatch, a number out of range, a lease for anything but an observed item. Well-formed data that is merely unfamiliar is `E_NEEDS_SUBTOOL`: an observation that names no category or a category with no profile, a field or fact nobody declared, a value outside a declared set, an `Unknown` tier or `Stated` privacy claim where `Seen` is required, or a case no rule row covers. When a lease is both, `E_PARSE` is reported.
 
 **Reason:** this matches the one-line meanings of the codes ("the data was broken" against "the data was valid and unfamiliar"), and an item can only be called unfamiliar once it is known to be valid. It also matters in practice: Muster holds an `E_PARSE` item until the owner releases it, but replays a paused item by itself when a new build of Assay is deployed.
 
@@ -150,16 +152,16 @@ Keeping the 1-based rule row numbers in `rules.gates` and `rules.factors` preser
 
 - Each scored outcome carries the five values, in order. Anything that ranks candidates sorts by `score`, then by each value in turn, higher first.
 - Gap severity is the Gap rating, Low upkeep is the Low-upkeep rating, and Small code footprint is the Small-enough-to-read rating.
-- Roadmap phase fit and Community demand are whole-number facts in the observation: `roadmap_phase_fit` from 0 (no fit) to 3 (current phase), and `community_demand`, a count of distinct public requests.
+- Roadmap phase fit and Community demand are whole-number facts in the observation: `roadmap_phase_fit` from 0 (no fit) to 3 (current phase), and `community_demand`, a count of distinct public requests (`Seen` or `Stated`; an `Unknown` tier pauses the item with `E_NEEDS_SUBTOOL`).
 - If all five are equal, the lower item number sorts first, so the order is never undefined. `assay rank` and `engine.Compare` apply this order.
 
-### 7. Make "One job" something a machine can decide
+### 7. Make "One job" something a machine can decide without free text
 
-**Problem:** "describable in one active verb-first sentence" cannot be judged without a model unless the rule is made concrete.
+**Problem:** "describable in one active verb-first sentence" cannot be judged directly without either a model or passing free-text sentences from vendor pages across the clean-room boundary.
 
-**Proposal:** the observation carries `task_count` and `task_sentence`. The gate fails when `task_count` is 2 or more. Each profile keeps two closed word lists: verbs that may open the sentence (pass) and openers that show it is not verb-first, such as "a", "the", "helps" (fail). A sentence that opens with a word on neither list is not judged; the item is paused with `E_NEEDS_SUBTOOL` until someone adds the word to a list.
+**Proposal:** the observation carries `task_count` (`1..50`) and `core_job` (`type: enum`). Each profile declares a closed vocabulary of focused single-job slugs for its domain (aligned with Sextant's `CoreJobs`, such as `rate_calculation`, `amount_calculation`, `date_calculation`, `eligibility_check`, `record_search`, `page_budget_check`, `control_mapping`, `code_lookup`, `config_validation`) alongside broad-scope disqualifiers (`multi_workflow`, `portal_suite`, `open_ended_advisory`). `one_job` fails when `task_count >= 2` or `core_job` is in `[multi_workflow, portal_suite, open_ended_advisory]`, passes when `task_count == 1` and `core_job` is in the profile's single-job enum (`Seen` or `Stated`), and pauses with `E_NEEDS_SUBTOOL` if `core_job` is `Unknown` or outside the declared enum.
 
-**Reason:** this is the fail-closed rule applied to language. It will pause more items at first, and each pause is cured by a one-word change with a fixture.
+**Reason:** replacing free-text `task_sentence` with a closed `core_job` enum enforces Sextant's clean-room guarantee by construction while keeping `one_job` deterministic and fail-closed.
 
 ### 8. Decide all five gates, always
 
@@ -184,17 +186,27 @@ Keeping the 1-based rule row numbers in `rules.gates` and `rules.factors` preser
 
 ### 11. Name what the specification leaves unnamed
 
-`deploy/assay.yaml` pins the container image by `sha256` digest in the cluster's local Lazarette registry (`lazarette.clearedstack.svc.cluster.local:5000/assay@sha256:...`), schedules onto `arm64` nodes excluding `cm3588-plus`, and sets:
+`deploy/assay.yaml` pins the container image by `sha256` digest in the cluster's local Lazarette registry (`lazarette.clearedstack.svc.cluster.local:5000/assay@sha256:...`), `.ko.yaml` pins the static base image by `sha256` digest in Lazarette for `linux/arm64` builds, and the pod schedules onto `arm64` nodes excluding `cm3588-plus`, setting:
 
 - Muster's service address and port (`http://muster.clearedstack.svc.cluster.local:8080`, matching Muster's `:8080` listener).
 - The labels that select Muster's pods (`app.kubernetes.io/name: muster` in `clearedstack`).
 - The Kubernetes name of the "Standard (Workers)" priority class is still left out until the cluster defines it.
 
-### 12. Decide the rating thresholds
+### 12. Calibrate the rating thresholds across all five profiles
 
 **Gap:** the specification fixes the gates, the seven weights and the recommendation bands, and those are implemented exactly. It does not say what evidence earns each rating from 1 to 5, in any category.
 
-**Proposal:** none on the numbers. The thresholds and word lists now in the five profiles are placeholders, made up so that the engine can be run and tested. The project owner should set them before any score is published. Every change to one will show up as a change to a golden file.
+**Resolution (`version: 2` profiles):** all five profiles (`pricing`, `proposal`, `cyber`, `market`, `devsecops`) use calibrated ClearedStack v3.1 bands:
+
+- **`need` (`need_signals`):** `>=30` / `15..29` / `7..14` / `2..6` / `0..1` in `pricing` and `cyber`; `>=25` / `12..24` / `5..11` / `2..4` / `0..1` in `proposal`, `market`, and `devsecops`.
+- **`gap` (`best_alternative`):** `none` (5), `paid_only` (4), `outdated` (3), `partial` (2), `complete` (1).
+- **`public_source_strength` (`source_kind` + `source_precision`):** category-specific authority hierarchy placing statutory/FAR/DFARS/NIST SP exact formulas and lookup tables at `5`/`4`, defined procedures at `3`, agency guidance procedures at `2`, and general principles at `1`.
+- **`browser_fit` (`largest_input_kb` plus category payload modifiers):** `<=64` / `65..512` / `513..4096` / `4097..16384` / `>=16385` KB in `pricing` and `cyber`, `<=128` / `129..1024` (JS vs WASM) / `1025..8192` / `>=8193` KB in `devsecops`, `<=1024` / `1025..8192` / `8193..32768` / `32769..131072` / `>=131073` KB in `proposal`, and `<=256` KB with `<=25k` bundled rows down to `>=2049` KB or `>1000k` rows in `market`.
+- **`readable_size` (`est_source_lines` plus complexity modifiers):** `<=300` (5), `301..750` (4), `751..1500` (3), `1501..2500` (2), `>=2501` (1), with markdowns above `control_count > 110` (NIST SP 800-171 Rev 2 scale) in `cyber` and `config_formats >= 3` in `devsecops`, ensuring high-need candidates above `1500` SLOC trigger `split_flag: true`.
+- **`checkable` (`worked_examples`):** `>=10` (5), `5..9` (4), `2..4` (3), `1` (2), `0` (1), matching Waybill's nominal-plus-boundary test-vector model at `>=2`.
+- **`low_upkeep` (`reference_updates_per_year` plus `rate_tables` / `template_count`):** `0` static (5), `1` annual (4), `2..4` quarterly FAC/table cycles (3), `5..12` monthly bulletins (2), `>=13` sub-monthly churn (1), marked down one band when `rate_tables >= 3` or `template_count >= 3`.
+
+Every change to any threshold is captured in the golden fixture diffs.
 
 ### 13. Small points, recorded and not changed
 

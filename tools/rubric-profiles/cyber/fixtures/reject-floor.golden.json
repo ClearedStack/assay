@@ -8,7 +8,7 @@
   "rules": {
     "rubric_version": 1,
     "profile": "cyber",
-    "profile_version": 1,
+    "profile_version": 2,
     "gates": {
       "public_source": 3,
       "runs_in_browser": 4,
@@ -21,7 +21,7 @@
       "gap": 5,
       "public_source_strength": 5,
       "browser_fit": 5,
-      "readable_size": 6,
+      "readable_size": 8,
       "checkable": 5,
       "low_upkeep": 5
     }
@@ -41,7 +41,7 @@
     },
     "one_job": {
       "passed": true,
-      "reason": "It does one job, stated in one verb-first sentence."
+      "reason": "It performs one focused job from the category's closed job vocabulary."
     },
     "arithmetic_not_advice": {
       "passed": true,

@@ -1,19 +1,19 @@
 {
   "contract": "v1",
   "worker": "assay",
-  "id": "PA-4019",
+  "id": "PA-3018",
   "state": "needs_subtool",
-  "category": "pricing",
-  "profile": "pricing",
+  "category": "market",
+  "profile": "market",
   "rules": {
     "rubric_version": 1,
-    "profile": "pricing",
-    "profile_version": 1
+    "profile": "market",
+    "profile_version": 2
   },
   "error": {
     "code": "E_NEEDS_SUBTOOL",
     "reason": "no_matching_rule",
-    "where": "one_job",
-    "fingerprint": "faa92c6097a13580"
+    "where": "private_by_design",
+    "fingerprint": "d40ae7ead25066c7"
   }
 }

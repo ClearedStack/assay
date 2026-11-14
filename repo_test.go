@@ -240,12 +240,27 @@ func TestNoDockerfile(t *testing.T) {
 	if err != nil {
 		t.Fatalf(".ko.yaml: %v", err)
 	}
-	if base, ok := cfg.Value().(map[string]any)["defaultBaseImage"].(string); ok && !strings.Contains(base, "@sha256:") {
-		t.Errorf(".ko.yaml defaultBaseImage must be pinned by digest if set, got %q", base)
+	basePinned := regexp.MustCompile(`^lazarette\.clearedstack\.svc\.cluster\.local:5000/static@sha256:[0-9a-f]{64}$`)
+	if base, _ := cfg.Value().(map[string]any)["defaultBaseImage"].(string); !basePinned.MatchString(base) {
+		t.Errorf(".ko.yaml defaultBaseImage must be pinned by digest in Lazarette, got %q", base)
+	}
+	platforms, _ := cfg.Value().(map[string]any)["defaultPlatforms"].([]any)
+	if len(platforms) != 1 || platforms[0] != "linux/arm64" {
+		t.Errorf(".ko.yaml defaultPlatforms must be [linux/arm64], got %v", platforms)
 	}
 	builds, _ := cfg.Value().(map[string]any)["builds"].([]any)
 	if len(builds) != 1 || at(t, builds[0], "main") != "./cmd/assay" {
 		t.Errorf(".ko.yaml must build ./cmd/assay and nothing else")
+	}
+	ldflags, _ := at(t, builds[0], "ldflags").([]any)
+	hasBuildID := false
+	for _, f := range ldflags {
+		if f == "-buildid=" {
+			hasBuildID = true
+		}
+	}
+	if !hasBuildID {
+		t.Errorf(".ko.yaml ldflags must include -buildid= for reproducible digests, got %v", ldflags)
 	}
 }
 

@@ -8,7 +8,7 @@
   "rules": {
     "rubric_version": 1,
     "profile": "market",
-    "profile_version": 1,
+    "profile_version": 2,
     "gates": {
       "public_source": 3,
       "runs_in_browser": 2,
@@ -32,7 +32,7 @@
     },
     "one_job": {
       "passed": false,
-      "reason": "The job is not stated as an active, verb-first sentence."
+      "reason": "Its scope is a multi-step suite or open-ended advisory workflow rather than one job."
     },
     "arithmetic_not_advice": {
       "passed": true,
