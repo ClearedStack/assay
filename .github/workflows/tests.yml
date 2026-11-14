@@ -1,0 +1,37 @@
+name: tests
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test -race -count=1 ./...
+      - name: assay check
+        run: go run ./cmd/assay check
+      - name: fuzz contract parse
+        run: go test ./internal/contract -run=^$ -fuzz=^FuzzParse$ -fuzztime=3s
+      - name: fuzz contract outcome
+        run: go test ./internal/contract -run=^$ -fuzz=^FuzzOutcomeEvaluation$ -fuzztime=3s
+      - name: fuzz yamlite
+        run: go test ./internal/yamlite -run=^$ -fuzz=^FuzzParseAll$ -fuzztime=3s
+      - name: fuzz engine
+        run: go test ./internal/engine -run=^$ -fuzz=^FuzzEvaluate$ -fuzztime=3s
+      - name: fuzz muster http refusal
+        run: go test ./internal/muster -run=^$ -fuzz=^FuzzHTTPClientRefusal$ -fuzztime=3s

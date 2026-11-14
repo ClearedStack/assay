@@ -147,12 +147,12 @@ func TestPausedAndBrokenItemsCarryNoVerdict(t *testing.T) {
 		state string
 		code  errs.Code
 	}{
-		"fixtures/needs-subtool-unknown-category.input.json":            {contract.StateNeedsSubtool, errs.NeedsSubtool},
-		"pricing/fixtures/needs-subtool-unknown-tier.input.json":        {contract.StateNeedsSubtool, errs.NeedsSubtool},
-		"pricing/fixtures/needs-subtool-unverified-privacy.input.json":  {contract.StateNeedsSubtool, errs.NeedsSubtool},
-		"pricing/fixtures/needs-subtool-unknown-value.input.json":       {contract.StateNeedsSubtool, errs.NeedsSubtool},
-		"pricing/fixtures/parse-wrong-type.input.json":                  {"", errs.Parse},
-		"fixtures/parse-malformed-json.input.json":                      {"", errs.Parse},
+		"fixtures/needs-subtool-unknown-category.input.json":           {contract.StateNeedsSubtool, errs.NeedsSubtool},
+		"pricing/fixtures/needs-subtool-unknown-tier.input.json":       {contract.StateNeedsSubtool, errs.NeedsSubtool},
+		"pricing/fixtures/needs-subtool-unverified-privacy.input.json": {contract.StateNeedsSubtool, errs.NeedsSubtool},
+		"pricing/fixtures/needs-subtool-unknown-value.input.json":      {contract.StateNeedsSubtool, errs.NeedsSubtool},
+		"pricing/fixtures/parse-wrong-type.input.json":                 {"", errs.Parse},
+		"fixtures/parse-malformed-json.input.json":                     {"", errs.Parse},
 	}
 	for name, want := range cases {
 		out := eng.Evaluate(readFixture(t, name))
@@ -209,17 +209,19 @@ func TestErrorsNeverEchoTheInput(t *testing.T) {
 		"unknown enum value":        func(r map[string]any) { facts(r)["source_kind"] = seenVal(planted) },
 		"unknown list value":        func(r map[string]any) { facts(r)["output_kinds"] = seenVal([]any{"10.20.30.40"}) },
 		"unknown core_job":          func(r map[string]any) { facts(r)["core_job"] = seenVal("hunter2@" + planted) },
-		"bad fact tier":             func(r map[string]any) { facts(r)["core_job"] = map[string]any{"value": "rate_calculation", "tier": "hunter2@" + planted} },
-		"bad sub_tool":              func(r map[string]any) { observed(r)["sub_tool"] = "hunter2@" + planted },
-		"bad observed_on":           func(r map[string]any) { observed(r)["observed_on"] = "10.20.30.40" },
-		"unknown category":          func(r map[string]any) { observed(r)["category"] = "db01" },
-		"bad category":              func(r map[string]any) { observed(r)["category"] = planted },
-		"bad item id":               func(r map[string]any) { r["id"] = "s3cr3t@" + planted },
-		"bad lease":                 func(r map[string]any) { r["lease"] = "hunter2 " + planted },
-		"bad lane":                  func(r map[string]any) { r["lane"] = planted },
-		"bad expires":               func(r map[string]any) { r["expires"] = "10.20.30.40" },
-		"wrong type":                func(r map[string]any) { facts(r)["task_count"] = seenVal("hunter2") },
-		"bad state":                 func(r map[string]any) { r["state"] = planted },
+		"bad fact tier": func(r map[string]any) {
+			facts(r)["core_job"] = map[string]any{"value": "rate_calculation", "tier": "hunter2@" + planted}
+		},
+		"bad sub_tool":     func(r map[string]any) { observed(r)["sub_tool"] = "hunter2@" + planted },
+		"bad observed_on":  func(r map[string]any) { observed(r)["observed_on"] = "10.20.30.40" },
+		"unknown category": func(r map[string]any) { observed(r)["category"] = "db01" },
+		"bad category":     func(r map[string]any) { observed(r)["category"] = planted },
+		"bad item id":      func(r map[string]any) { r["id"] = "s3cr3t@" + planted },
+		"bad lease":        func(r map[string]any) { r["lease"] = "hunter2 " + planted },
+		"bad lane":         func(r map[string]any) { r["lane"] = planted },
+		"bad expires":      func(r map[string]any) { r["expires"] = "10.20.30.40" },
+		"wrong type":       func(r map[string]any) { facts(r)["task_count"] = seenVal("hunter2") },
+		"bad state":        func(r map[string]any) { r["state"] = planted },
 	}
 	for name, mutate := range mutations {
 		t.Run(name, func(t *testing.T) {

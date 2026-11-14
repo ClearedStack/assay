@@ -237,12 +237,137 @@ func TestUsageAndVersion(t *testing.T) {
 	if code, out, _ := runCLI(t, "", noEnv, "help"); code != exitOK || !strings.Contains(out, "assay eval") {
 		t.Errorf("help: exit %d", code)
 	}
-	for _, args := range [][]string{{}, {"score"}, {"eval"}, {"eval", "a", "b"}, {"eval", "-format", "xml", "a"}, {"rank"}, {"rank", "-"}, {"run", "extra"}, {"eval", "-nope"}} {
+	for _, args := range [][]string{
+		{}, {"score"}, {"eval"}, {"eval", "a", "b"}, {"eval", "-format", "xml", "a"},
+		{"rank"}, {"rank", "-"}, {"rank", "-format", "xml", "a"},
+		{"check", "a", "b"}, {"check", "-nope"},
+		{"diff"}, {"diff", "-after", "x"}, {"diff", "-after", "x", "-"}, {"diff", "-after", "x", "-format", "xml", "a"},
+		{"run", "extra"}, {"eval", "-nope"},
+	} {
 		if code, _, _ := runCLI(t, "", noEnv, args...); code != exitUsage {
 			t.Errorf("%v: exit %d, want %d", args, code, exitUsage)
 		}
 	}
 	if code, _, errOut := runCLI(t, "", noEnv, "eval", filepath.Join(t.TempDir(), "absent.json")); code != exitFailure || strings.Contains(errOut, "absent") {
 		t.Errorf("missing file: exit %d, stderr %q", code, errOut)
+	}
+	if code, _, errOut := runCLI(t, "", noEnv, "check", filepath.Join(t.TempDir(), "secret-dir")); code != exitFailure || strings.Contains(errOut, "secret-dir") {
+		t.Errorf("missing check dir: exit %d, stderr %q", code, errOut)
+	}
+	if code, _, errOut := runCLI(t, "", noEnv, "diff", "-after", filepath.Join(t.TempDir(), "secret-after"), filepath.Join(fixtures, "pricing/fixtures/build.input.json")); code != exitFailure || strings.Contains(errOut, "secret-after") {
+		t.Errorf("missing diff dir: exit %d, stderr %q", code, errOut)
+	}
+}
+
+func copyTree(t *testing.T, src, dst string) {
+	t.Helper()
+	err := filepath.WalkDir(src, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && strings.HasSuffix(rel, ".go") {
+			return nil
+		}
+		target := filepath.Join(dst, rel)
+		if d.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, data, 0o644)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCheckAndUpdate(t *testing.T) {
+	code, out, errOut := runCLI(t, "", noEnv, "check", "../../tools")
+	if code != exitOK || !strings.HasPrefix(out, "ok: 5 categories, ") {
+		t.Fatalf("check failed: exit %d, stdout %q, stderr %q", code, out, errOut)
+	}
+
+	tmp := filepath.Join(t.TempDir(), "tools")
+	copyTree(t, "../../tools", tmp)
+
+	// Corrupt one golden file: check must fail without -update, then heal with -update.
+	gold := filepath.Join(tmp, "rubric-profiles/pricing/fixtures/build.golden.json")
+	if err := os.WriteFile(gold, []byte("{\"broken\":true}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, _, errOut = runCLI(t, "", noEnv, "check", tmp)
+	if code != exitFailure || !strings.Contains(errOut, "pricing/build: outcome differs") {
+		t.Fatalf("expected golden mismatch failure, got exit %d, stderr %q", code, errOut)
+	}
+
+	code, out, errOut = runCLI(t, "", noEnv, "check", "-update", tmp)
+	if code != exitOK || !strings.HasPrefix(out, "ok: 5 categories, ") {
+		t.Fatalf("check -update failed: exit %d, stdout %q, stderr %q", code, out, errOut)
+	}
+}
+
+func TestDiffAndCustomRules(t *testing.T) {
+	tmp := filepath.Join(t.TempDir(), "tools")
+	copyTree(t, "../../tools", tmp)
+
+	// Tighten pricing's top need_signals band in the candidate rule copy so
+	// pricing/build.input.json (need_signals: 27) drops from rating 4 to 3.
+	profPath := filepath.Join(tmp, "rubric-profiles/pricing/profile.yaml")
+	profBytes, err := os.ReadFile(profPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	edited := strings.Replace(
+		string(profBytes),
+		"when: {need_signals: {gte: 15, lte: 29}}\n      rating: 4",
+		"when: {need_signals: {gte: 15, lte: 29}}\n      rating: 3",
+		1,
+	)
+	if edited == string(profBytes) {
+		t.Fatal("target rule line not found in pricing/profile.yaml")
+	}
+	if err := os.WriteFile(profPath, []byte(edited), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	buildInput := filepath.Join(fixtures, "pricing/fixtures/build.input.json")
+	parkInput := filepath.Join(fixtures, "pricing/fixtures/park.input.json")
+
+	// eval -rules uses the modified directory (score drops by 4 points: 86 -> 82).
+	code, out, errOut := runCLI(t, "", noEnv, "eval", "-rules", tmp, buildInput)
+	if code != exitOK || !strings.Contains(out, "82 / 100") {
+		t.Fatalf("eval -rules unexpected: exit %d, out:\n%s\nstderr:\n%s", code, out, errOut)
+	}
+
+	// rank -rules -format json produces valid ranked JSON.
+	code, rankJSON, errOut := runCLI(t, "", noEnv, "rank", "-rules", tmp, "-format", "json", parkInput, buildInput)
+	if code != exitOK {
+		t.Fatalf("rank -format json failed: exit %d, stderr %q", code, errOut)
+	}
+	var ranked []rankedEntry
+	if err := json.Unmarshal([]byte(rankJSON), &ranked); err != nil || len(ranked) != 2 || ranked[0].Score == nil || *ranked[0].Score != 82 {
+		t.Fatalf("unexpected rank json: %v\n%s", err, rankJSON)
+	}
+
+	// diff in text mode reports 1 changed and 1 unchanged item.
+	code, diffText, errOut := runCLI(t, "", noEnv, "diff", "-after", tmp, parkInput, buildInput)
+	if code != exitOK || !strings.Contains(diffText, "Evaluated: 2, Changed: 1, Unchanged: 1") || !strings.Contains(diffText, "factor.need") {
+		t.Fatalf("diff text unexpected: exit %d, out:\n%s\nstderr:\n%s", code, diffText, errOut)
+	}
+
+	// diff in json mode reports exact structured delta.
+	code, diffJSON, errOut := runCLI(t, "", noEnv, "diff", "-before", "../../tools", "-after", tmp, "-format", "json", buildInput, parkInput)
+	if code != exitOK {
+		t.Fatalf("diff json failed: exit %d, stderr %q", code, errOut)
+	}
+	var rep diffReport
+	if err := json.Unmarshal([]byte(diffJSON), &rep); err != nil || rep.Evaluated != 2 || rep.Changed != 1 || rep.Unchanged != 1 {
+		t.Fatalf("unexpected diff json: %v\n%s", err, diffJSON)
 	}
 }

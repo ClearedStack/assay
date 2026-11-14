@@ -5,7 +5,7 @@
 # hold decides. If no row matches, the item is paused with E_NEEDS_SUBTOOL.
 # There is no default row anywhere.
 profile: cyber
-version: 2
+version: 3
 
 # Every fact a cyber record must carry. Each fact comes from Sextant in a
 # clean-room {value, tier} envelope; no free text can enter Assay. A record
@@ -39,7 +39,7 @@ facts:
   task_count: {type: int, min: 1, max: 100}
   core_job:
     type: enum
-    values: [control_mapping, score_calculation, requirement_tally, citation_lookup, eligibility_check, record_search, multi_workflow, portal_suite, open_ended_advisory]
+    values: [control_mapping, score_calculation, requirement_tally, citation_lookup, marking_generation, schema_validation, date_calculation, amount_calculation, eligibility_check, record_search, multi_workflow, portal_suite, open_ended_advisory]
   output_kinds:
     type: list
     values: [computed_number, structured_data, citation_lookup, legal_advice, compliance_determination]
@@ -119,7 +119,7 @@ gates:
       reason: "It does more than one job."
     - when:
         task_count: {eq: 1}
-        core_job: {in: [control_mapping, score_calculation, requirement_tally, citation_lookup, eligibility_check, record_search]}
+        core_job: {in: [control_mapping, score_calculation, requirement_tally, citation_lookup, marking_generation, schema_validation, date_calculation, amount_calculation, eligibility_check, record_search]}
       pass: true
       reason: "It performs one focused job from the category's closed job vocabulary."
     - when:

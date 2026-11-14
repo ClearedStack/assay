@@ -1,6 +1,6 @@
 Item:     PA-4019
 Category: pricing
-Rules:    rubric v1, profile pricing v2
+Rules:    rubric v1, profile pricing v3
 State:    needs_subtool
 
 Error
