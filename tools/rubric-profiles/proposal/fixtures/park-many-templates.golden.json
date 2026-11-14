@@ -1,14 +1,14 @@
 {
   "contract": "v1",
   "worker": "assay",
-  "id": "PA-4025",
+  "id": "PA-5017",
   "state": "scored",
-  "category": "pricing",
-  "profile": "pricing",
+  "category": "proposal",
+  "profile": "proposal",
   "rules": {
     "rubric_version": 1,
-    "profile": "pricing",
-    "profile_version": 1,
+    "profile": "proposal",
+    "profile_version": 2,
     "gates": {
       "public_source": 3,
       "runs_in_browser": 4,
@@ -17,13 +17,13 @@
       "arithmetic_not_advice": 2
     },
     "factors": {
-      "need": 2,
-      "gap": 2,
-      "public_source_strength": 1,
-      "browser_fit": 1,
-      "readable_size": 2,
-      "checkable": 2,
-      "low_upkeep": 2
+      "need": 3,
+      "gap": 3,
+      "public_source_strength": 3,
+      "browser_fit": 3,
+      "readable_size": 3,
+      "checkable": 3,
+      "low_upkeep": 5
     }
   },
   "gates": {
@@ -41,7 +41,7 @@
     },
     "one_job": {
       "passed": true,
-      "reason": "It does one job, stated in one verb-first sentence."
+      "reason": "It performs one focused job from the category's closed job vocabulary."
     },
     "arithmetic_not_advice": {
       "passed": true,
@@ -50,36 +50,36 @@
   },
   "factors": {
     "need": {
-      "rating": 4,
+      "rating": 3,
       "weight": 4
     },
     "gap": {
-      "rating": 4,
+      "rating": 3,
       "weight": 4
     },
     "public_source_strength": {
-      "rating": 5,
+      "rating": 3,
       "weight": 3
     },
     "browser_fit": {
-      "rating": 5,
+      "rating": 3,
       "weight": 3
     },
     "readable_size": {
-      "rating": 4,
+      "rating": 3,
       "weight": 2
     },
     "checkable": {
-      "rating": 4,
+      "rating": 3,
       "weight": 2
     },
     "low_upkeep": {
-      "rating": 4,
+      "rating": 2,
       "weight": 2
     }
   },
-  "score": 86,
-  "recommendation": "build",
+  "score": 58,
+  "recommendation": "park",
   "split_flag": false,
   "tie_breakers": [
     {
@@ -90,17 +90,17 @@
     {
       "id": "gap_severity",
       "name": "Gap severity",
-      "value": 4
+      "value": 3
     },
     {
       "id": "low_upkeep",
       "name": "Low upkeep",
-      "value": 4
+      "value": 2
     },
     {
       "id": "small_code_footprint",
       "name": "Small code footprint",
-      "value": 4
+      "value": 3
     },
     {
       "id": "community_demand",

@@ -1,16 +1,16 @@
-# Rubric profile for the "devsecops" category: tools that generate, check or
+# Rubric profile for the "devsecops" category: tools that validate, lint or
 # convert build and delivery files against a published requirement.
 #
 # Each table is read top to bottom and the first row whose conditions all
 # hold decides. If no row matches, the item is paused with E_NEEDS_SUBTOOL.
-# There is no default row anywhere. All thresholds are made up for this
-# project.
+# There is no default row anywhere.
 profile: devsecops
-version: 1
+version: 2
 
-# Every fact a devsecops record must carry. A record with a fact missing is
-# broken (E_PARSE); a record with a fact not listed here is unfamiliar
-# (E_NEEDS_SUBTOOL).
+# Every fact a devsecops record must carry. Each fact comes from Sextant in a
+# clean-room {value, tier} envelope; no free text can enter Assay. A record
+# with a declared fact missing is broken (E_PARSE); a record with an
+# undeclared fact or unfamiliar value is paused (E_NEEDS_SUBTOOL).
 facts:
   # Where the rule comes from.
   source_kind:
@@ -35,9 +35,11 @@ facts:
   emits_tracking: {type: bool}
   connect_src_self: {type: bool}
 
-  # What it does.
+  # What it does (closed job vocabulary aligned with Sextant's clean-room rules).
   task_count: {type: int, min: 1, max: 100}
-  task_sentence: {type: text, max_length: 200}
+  core_job:
+    type: enum
+    values: [config_validation, manifest_lint, format_conversion, policy_check, schema_diff, record_search, multi_workflow, portal_suite, open_ended_advisory]
   output_kinds:
     type: list
     values: [computed_number, structured_data, citation_lookup, legal_advice, compliance_determination]
@@ -88,6 +90,8 @@ gates:
       pass: true
       reason: "It runs entirely client-side."
 
+  # Passing private_by_design requires Seen provenance on emits_tracking and
+  # connect_src_self so unverified self-claims pause for inspection.
   private_by_design:
     - when: {works_offline: {eq: false}}
       pass: false
@@ -104,30 +108,25 @@ gates:
     - when:
         works_offline: {eq: true}
         needs_account: {eq: false}
-        emits_tracking: {eq: false}
-        connect_src_self: {eq: true}
+        emits_tracking: {eq: false, tier_in: [Seen]}
+        connect_src_self: {eq: true, tier_in: [Seen]}
       pass: true
       reason: "It works offline, with no account, no tracking and connect-src 'self'."
 
-  # The verb lists are deliberately closed. A sentence that opens with a
-  # word on neither list is not judged: the item is paused until someone
-  # adds the word to one list or the other.
   one_job:
     - when: {task_count: {gte: 2}}
       pass: false
       reason: "It does more than one job."
     - when:
         task_count: {eq: 1}
-        task_sentence:
-          first_word_in: [generate, validate, lint, convert, check, format, diff, list, parse, render]
+        core_job: {in: [config_validation, manifest_lint, format_conversion, policy_check, schema_diff, record_search]}
       pass: true
-      reason: "It does one job, stated in one verb-first sentence."
+      reason: "It performs one focused job from the category's closed job vocabulary."
     - when:
         task_count: {eq: 1}
-        task_sentence:
-          first_word_in: [a, an, the, this, it, tool, helps, lets, allows, provides, is, are, can, will, users, you, we]
+        core_job: {in: [multi_workflow, portal_suite, open_ended_advisory]}
       pass: false
-      reason: "The job is not stated as an active, verb-first sentence."
+      reason: "Its scope is a multi-step suite or open-ended advisory workflow rather than one job."
 
   arithmetic_not_advice:
     - when: {output_kinds: {any_in: [legal_advice, compliance_determination]}}
@@ -138,17 +137,17 @@ gates:
       reason: "It computes numbers, structures data or looks up citations."
 
 factors:
-  # Need: count of distinct public signals that small businesses need this.
+  # Need: distinct public requests or citations showing small-business need.
   need:
-    - when: {need_signals: {gte: 30}}
+    - when: {need_signals: {gte: 25}}
       rating: 5
-    - when: {need_signals: {gte: 16, lte: 29}}
+    - when: {need_signals: {gte: 12, lte: 24}}
       rating: 4
-    - when: {need_signals: {gte: 8, lte: 15}}
+    - when: {need_signals: {gte: 5, lte: 11}}
       rating: 3
-    - when: {need_signals: {gte: 3, lte: 7}}
+    - when: {need_signals: {gte: 2, lte: 4}}
       rating: 2
-    - when: {need_signals: {lte: 2}}
+    - when: {need_signals: {lte: 1}}
       rating: 1
 
   # Gap: 1 means a complete free tool already exists (link to it).
@@ -192,76 +191,84 @@ factors:
         source_precision: {in: [general_principle]}
       rating: 1
 
-  # Fits in a browser: the largest input a person would load, marked down
-  # when the tool needs WebAssembly, which is harder to read and audit.
+  # Fits in a browser: largest input size (KiB), marked down one band when
+  # WebAssembly is required rather than plain JavaScript.
   browser_fit:
     - when:
-        largest_input_kb: {lte: 200}
+        largest_input_kb: {lte: 128}
         client_runtime: {in: [browser_js]}
       rating: 5
     - when:
-        largest_input_kb: {lte: 200}
+        largest_input_kb: {lte: 128}
         client_runtime: {in: [browser_wasm]}
       rating: 4
     - when:
-        largest_input_kb: {gte: 201, lte: 2000}
+        largest_input_kb: {gte: 129, lte: 1024}
         client_runtime: {in: [browser_js]}
       rating: 4
     - when:
-        largest_input_kb: {gte: 201, lte: 2000}
+        largest_input_kb: {gte: 129, lte: 1024}
         client_runtime: {in: [browser_wasm]}
       rating: 3
-    - when: {largest_input_kb: {gte: 2001, lte: 20000}}
+    - when: {largest_input_kb: {gte: 1025, lte: 8192}}
       rating: 2
-    - when: {largest_input_kb: {gte: 20001}}
+    - when: {largest_input_kb: {gte: 8193}}
       rating: 1
 
-  # Small enough to read: estimated lines of source, marked down for each
-  # extra file format, because every format needs its own parser.
+  # Small enough to read: estimated lines of source, marked down one band when
+  # supporting three or more distinct configuration formats.
   readable_size:
     - when:
-        est_source_lines: {lte: 600}
+        est_source_lines: {lte: 300}
         config_formats: {lte: 2}
       rating: 5
     - when:
-        est_source_lines: {lte: 600}
+        est_source_lines: {lte: 300}
         config_formats: {gte: 3}
       rating: 4
     - when:
-        est_source_lines: {gte: 601, lte: 1500}
+        est_source_lines: {gte: 301, lte: 750}
         config_formats: {lte: 2}
       rating: 4
     - when:
-        est_source_lines: {gte: 601, lte: 1500}
+        est_source_lines: {gte: 301, lte: 750}
         config_formats: {gte: 3}
       rating: 3
-    - when: {est_source_lines: {gte: 1501, lte: 3000}}
+    - when:
+        est_source_lines: {gte: 751, lte: 1500}
+        config_formats: {lte: 2}
+      rating: 3
+    - when:
+        est_source_lines: {gte: 751, lte: 1500}
+        config_formats: {gte: 3}
       rating: 2
-    - when: {est_source_lines: {gte: 3001}}
+    - when: {est_source_lines: {gte: 1501, lte: 2500}}
+      rating: 2
+    - when: {est_source_lines: {gte: 2501}}
       rating: 1
 
-  # Can be checked: published worked examples to test the result against.
+  # Can be checked: published worked examples for test-vector verification.
   checkable:
-    - when: {worked_examples: {gte: 15}}
+    - when: {worked_examples: {gte: 10}}
       rating: 5
-    - when: {worked_examples: {gte: 8, lte: 14}}
+    - when: {worked_examples: {gte: 5, lte: 9}}
       rating: 4
-    - when: {worked_examples: {gte: 3, lte: 7}}
+    - when: {worked_examples: {gte: 2, lte: 4}}
       rating: 3
-    - when: {worked_examples: {gte: 1, lte: 2}}
+    - when: {worked_examples: {eq: 1}}
       rating: 2
     - when: {worked_examples: {eq: 0}}
       rating: 1
 
-  # Low upkeep: how often the requirement or the file formats change.
+  # Low upkeep: annual/quarterly requirement or schema update cadence.
   low_upkeep:
     - when: {reference_updates_per_year: {eq: 0}}
       rating: 5
-    - when: {reference_updates_per_year: {gte: 1, lte: 2}}
+    - when: {reference_updates_per_year: {eq: 1}}
       rating: 4
-    - when: {reference_updates_per_year: {gte: 3, lte: 6}}
+    - when: {reference_updates_per_year: {gte: 2, lte: 4}}
       rating: 3
-    - when: {reference_updates_per_year: {gte: 7, lte: 12}}
+    - when: {reference_updates_per_year: {gte: 5, lte: 12}}
       rating: 2
     - when: {reference_updates_per_year: {gte: 13}}
       rating: 1

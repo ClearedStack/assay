@@ -10,30 +10,96 @@
     "sextant": {
       "category": "proposal",
       "facts": {
-        "source_kind": "far",
-        "source_public": true,
-        "source_precision": "general_principle",
-        "client_runtime": "browser_js",
-        "needs_backend": false,
-        "needs_remote_api": false,
-        "largest_input_kb": 300000,
-        "works_offline": true,
-        "needs_account": false,
-        "emits_tracking": false,
-        "connect_src_self": true,
-        "task_count": 1,
-        "task_sentence": "Count pages in each made-up volume against its limit.",
-        "output_kinds": [
-          "computed_number"
-        ],
-        "need_signals": 1,
-        "best_alternative": "complete",
-        "est_source_lines": 8000,
-        "worked_examples": 0,
-        "reference_updates_per_year": 9,
-        "roadmap_phase_fit": 0,
-        "community_demand": 0,
-        "template_count": 2
+        "source_kind": {
+          "value": "far",
+          "tier": "Seen"
+        },
+        "source_public": {
+          "value": true,
+          "tier": "Seen"
+        },
+        "source_precision": {
+          "value": "general_principle",
+          "tier": "Seen"
+        },
+        "client_runtime": {
+          "value": "browser_js",
+          "tier": "Seen"
+        },
+        "needs_backend": {
+          "value": false,
+          "tier": "Seen"
+        },
+        "needs_remote_api": {
+          "value": false,
+          "tier": "Seen"
+        },
+        "largest_input_kb": {
+          "value": 300000,
+          "tier": "Seen"
+        },
+        "works_offline": {
+          "value": true,
+          "tier": "Seen"
+        },
+        "needs_account": {
+          "value": false,
+          "tier": "Seen"
+        },
+        "emits_tracking": {
+          "value": false,
+          "tier": "Seen"
+        },
+        "connect_src_self": {
+          "value": true,
+          "tier": "Seen"
+        },
+        "task_count": {
+          "value": 1,
+          "tier": "Seen"
+        },
+        "core_job": {
+          "value": "page_budget_check",
+          "tier": "Seen"
+        },
+        "output_kinds": {
+          "value": [
+            "computed_number"
+          ],
+          "tier": "Seen"
+        },
+        "need_signals": {
+          "value": 1,
+          "tier": "Seen"
+        },
+        "best_alternative": {
+          "value": "complete",
+          "tier": "Seen"
+        },
+        "est_source_lines": {
+          "value": 8000,
+          "tier": "Seen"
+        },
+        "worked_examples": {
+          "value": 0,
+          "tier": "Seen"
+        },
+        "reference_updates_per_year": {
+          "value": 15,
+          "tier": "Seen"
+        },
+        "roadmap_phase_fit": {
+          "value": 0,
+          "tier": "Seen"
+        },
+        "community_demand": {
+          "value": 0,
+          "tier": "Seen"
+        },
+        "template_count": {
+          "value": 2,
+          "tier": "Seen"
+        }
       }
     },
     "trawl": {

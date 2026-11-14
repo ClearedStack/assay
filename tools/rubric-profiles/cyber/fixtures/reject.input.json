@@ -10,30 +10,96 @@
     "sextant": {
       "category": "cyber",
       "facts": {
-        "source_kind": "agency_publication",
-        "source_public": true,
-        "source_precision": "lookup_table",
-        "client_runtime": "browser_js",
-        "needs_backend": false,
-        "needs_remote_api": false,
-        "largest_input_kb": 20000,
-        "works_offline": true,
-        "needs_account": false,
-        "emits_tracking": false,
-        "connect_src_self": true,
-        "task_count": 1,
-        "task_sentence": "Score a made-up self-assessment against a control list.",
-        "output_kinds": [
-          "computed_number"
-        ],
-        "need_signals": 6,
-        "best_alternative": "partial",
-        "est_source_lines": 2500,
-        "worked_examples": 2,
-        "reference_updates_per_year": 6,
-        "roadmap_phase_fit": 2,
-        "community_demand": 14,
-        "control_count": 110
+        "source_kind": {
+          "value": "agency_publication",
+          "tier": "Seen"
+        },
+        "source_public": {
+          "value": true,
+          "tier": "Seen"
+        },
+        "source_precision": {
+          "value": "lookup_table",
+          "tier": "Seen"
+        },
+        "client_runtime": {
+          "value": "browser_js",
+          "tier": "Seen"
+        },
+        "needs_backend": {
+          "value": false,
+          "tier": "Seen"
+        },
+        "needs_remote_api": {
+          "value": false,
+          "tier": "Seen"
+        },
+        "largest_input_kb": {
+          "value": 10000,
+          "tier": "Seen"
+        },
+        "works_offline": {
+          "value": true,
+          "tier": "Seen"
+        },
+        "needs_account": {
+          "value": false,
+          "tier": "Seen"
+        },
+        "emits_tracking": {
+          "value": false,
+          "tier": "Seen"
+        },
+        "connect_src_self": {
+          "value": true,
+          "tier": "Seen"
+        },
+        "task_count": {
+          "value": 1,
+          "tier": "Seen"
+        },
+        "core_job": {
+          "value": "control_mapping",
+          "tier": "Seen"
+        },
+        "output_kinds": {
+          "value": [
+            "computed_number"
+          ],
+          "tier": "Seen"
+        },
+        "need_signals": {
+          "value": 5,
+          "tier": "Seen"
+        },
+        "best_alternative": {
+          "value": "partial",
+          "tier": "Seen"
+        },
+        "est_source_lines": {
+          "value": 2000,
+          "tier": "Seen"
+        },
+        "worked_examples": {
+          "value": 1,
+          "tier": "Seen"
+        },
+        "reference_updates_per_year": {
+          "value": 6,
+          "tier": "Seen"
+        },
+        "roadmap_phase_fit": {
+          "value": 2,
+          "tier": "Seen"
+        },
+        "community_demand": {
+          "value": 14,
+          "tier": "Seen"
+        },
+        "control_count": {
+          "value": 110,
+          "tier": "Seen"
+        }
       }
     },
     "trawl": {

@@ -8,7 +8,7 @@
   "rules": {
     "rubric_version": 1,
     "profile": "proposal",
-    "profile_version": 1,
+    "profile_version": 2,
     "gates": {
       "public_source": 3,
       "runs_in_browser": 4,
@@ -23,7 +23,7 @@
       "browser_fit": 1,
       "readable_size": 4,
       "checkable": 2,
-      "low_upkeep": 2
+      "low_upkeep": 3
     }
   },
   "gates": {
@@ -41,7 +41,7 @@
     },
     "one_job": {
       "passed": true,
-      "reason": "It does one job, stated in one verb-first sentence."
+      "reason": "It performs one focused job from the category's closed job vocabulary."
     },
     "arithmetic_not_advice": {
       "passed": true,
@@ -74,11 +74,11 @@
       "weight": 2
     },
     "low_upkeep": {
-      "rating": 4,
+      "rating": 3,
       "weight": 2
     }
   },
-  "score": 90,
+  "score": 88,
   "recommendation": "build",
   "split_flag": true,
   "tie_breakers": [
@@ -95,7 +95,7 @@
     {
       "id": "low_upkeep",
       "name": "Low upkeep",
-      "value": 4
+      "value": 3
     },
     {
       "id": "small_code_footprint",

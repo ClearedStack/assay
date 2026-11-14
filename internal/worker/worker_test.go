@@ -156,7 +156,8 @@ func TestEachOutcomeBecomesTheRightCall(t *testing.T) {
 		{"pricing/fixtures/screened-out-all-gates", muster.CallComplete, "screened_out", ""},
 		{"fixtures/matched-other-results-ignored", muster.CallComplete, "scored", ""},
 		{"pricing/fixtures/needs-subtool-unknown-fact", muster.CallNeedsSubtool, "needs_subtool", ""},
-		{"pricing/fixtures/needs-subtool-unlisted-verb", muster.CallNeedsSubtool, "needs_subtool", ""},
+		{"pricing/fixtures/needs-subtool-unknown-tier", muster.CallNeedsSubtool, "needs_subtool", ""},
+		{"pricing/fixtures/needs-subtool-unverified-privacy", muster.CallNeedsSubtool, "needs_subtool", ""},
 		{"fixtures/needs-subtool-unknown-category", muster.CallNeedsSubtool, "needs_subtool", ""},
 		{"fixtures/needs-subtool-no-category", muster.CallNeedsSubtool, "needs_subtool", ""},
 		{"fixtures/needs-subtool-unknown-field", muster.CallNeedsSubtool, "needs_subtool", ""},
@@ -194,12 +195,12 @@ func TestEachOutcomeBecomesTheRightCall(t *testing.T) {
 			t.Errorf("%s: only a complete call carries a result", tc.name)
 		}
 	}
-	if r.hub.Paused() != 5 {
-		t.Errorf("five items should be paused, got %d", r.hub.Paused())
+	if r.hub.Paused() != 6 {
+		t.Errorf("six items should be paused, got %d", r.hub.Paused())
 	}
 	// The detail Muster's fail and needs_subtool calls cannot carry is in
 	// Assay's own log line.
-	for _, want := range []string{`"reason":"unknown_category"`, `"reason":"no_matching_rule"`, `"where":"one_job"`, `"reason":"invalid_type"`, `"fingerprint":"`} {
+	for _, want := range []string{`"reason":"unknown_category"`, `"reason":"no_matching_rule"`, `"where":"one_job"`, `"where":"private_by_design"`, `"reason":"invalid_type"`, `"fingerprint":"`} {
 		if !strings.Contains(r.logs.String(), want) {
 			t.Errorf("the log should carry %s", want)
 		}
@@ -418,7 +419,11 @@ func TestLogsNeverNameAMachineAnAddressOrACredential(t *testing.T) {
 	// Nor do the logs for ordinary items carry anything from the lease
 	// beyond the item identifier and the outcome.
 	r2 := newRig(t)
-	rec := bytes.Replace(fixture(t, "pricing/fixtures/build.input.json"), []byte("Compute a loaded hourly rate"), []byte("Zap hunter2 at 10.20.30.40"), 1)
+	orig := fixture(t, "pricing/fixtures/build.input.json")
+	rec := bytes.Replace(orig, []byte("made-up source"), []byte("Zap hunter2 at 10.20.30.40"), 1)
+	if bytes.Equal(rec, orig) {
+		t.Fatal("build.input.json no longer carries made-up source")
+	}
 	r2.hub.Add(rec)
 	r2.w.Step(ctx)
 	if strings.Contains(r2.logs.String(), "hunter2") || strings.Contains(r2.logs.String(), "10.20.30.40") {

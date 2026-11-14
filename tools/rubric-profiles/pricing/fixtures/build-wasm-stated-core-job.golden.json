@@ -1,0 +1,111 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-4025",
+  "state": "scored",
+  "category": "pricing",
+  "profile": "pricing",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "pricing",
+    "profile_version": 2,
+    "gates": {
+      "public_source": 3,
+      "runs_in_browser": 4,
+      "private_by_design": 5,
+      "one_job": 2,
+      "arithmetic_not_advice": 2
+    },
+    "factors": {
+      "need": 2,
+      "gap": 2,
+      "public_source_strength": 1,
+      "browser_fit": 1,
+      "readable_size": 2,
+      "checkable": 2,
+      "low_upkeep": 2
+    }
+  },
+  "gates": {
+    "public_source": {
+      "passed": true,
+      "reason": "The rules come from officially released public material."
+    },
+    "runs_in_browser": {
+      "passed": true,
+      "reason": "It runs entirely client-side."
+    },
+    "private_by_design": {
+      "passed": true,
+      "reason": "It works offline, with no account, no tracking and connect-src 'self'."
+    },
+    "one_job": {
+      "passed": true,
+      "reason": "It performs one focused job from the category's closed job vocabulary."
+    },
+    "arithmetic_not_advice": {
+      "passed": true,
+      "reason": "It computes numbers, structures data or looks up citations."
+    }
+  },
+  "factors": {
+    "need": {
+      "rating": 4,
+      "weight": 4
+    },
+    "gap": {
+      "rating": 4,
+      "weight": 4
+    },
+    "public_source_strength": {
+      "rating": 5,
+      "weight": 3
+    },
+    "browser_fit": {
+      "rating": 5,
+      "weight": 3
+    },
+    "readable_size": {
+      "rating": 4,
+      "weight": 2
+    },
+    "checkable": {
+      "rating": 4,
+      "weight": 2
+    },
+    "low_upkeep": {
+      "rating": 4,
+      "weight": 2
+    }
+  },
+  "score": 86,
+  "recommendation": "build",
+  "split_flag": false,
+  "tie_breakers": [
+    {
+      "id": "roadmap_phase_fit",
+      "name": "Roadmap phase fit",
+      "value": 2
+    },
+    {
+      "id": "gap_severity",
+      "name": "Gap severity",
+      "value": 4
+    },
+    {
+      "id": "low_upkeep",
+      "name": "Low upkeep",
+      "value": 4
+    },
+    {
+      "id": "small_code_footprint",
+      "name": "Small code footprint",
+      "value": 4
+    },
+    {
+      "id": "community_demand",
+      "name": "Community demand",
+      "value": 14
+    }
+  ]
+}

@@ -65,11 +65,11 @@ func TestWorkerStaysWithinTheMemoryBudget(t *testing.T) {
 	// One lease reply just under the size limit, to show a large one does
 	// not blow the budget either.
 	big := []byte(`{"lease":"PA-9999.1","kind":"item","id":"PA-9999","state":"observed","lane":"urgent","attempt":1,` +
-		`"expires":"2026-01-05T09:01:00Z","results":{"sextant":{"category":"pricing","facts":{"padding":"`)
+		`"expires":"2026-01-05T09:01:00Z","results":{"sextant":{"category":"pricing","facts":{"padding":{"value":"`)
 	for len(big) < 1000000 {
 		big = append(big, "made-up filler "...)
 	}
-	hub.Add(append(big, `"}}}}`...))
+	hub.Add(append(big, `","tier":"Seen"}}}}}`...))
 
 	const token = "made-up-token"
 	srv := httptest.NewServer(hub.Handler(token))

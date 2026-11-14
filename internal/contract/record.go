@@ -44,26 +44,39 @@ var (
 	// given. Its examples include PA-0001.2.1 and incident:PA-0001.2.1.
 	leaseIDPattern  = regexp.MustCompile(`^[A-Za-z0-9._~:-]{1,128}$`)
 	categoryPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
+	subToolPattern  = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 	// A timestamp such as 2026-01-05T09:01:00Z. Assay never reads the
 	// clock, so the value is only checked for shape.
 	timePattern = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$`)
 	lanes       = map[string]bool{"urgent": true, "normal": true, "backfill": true}
 )
 
+// Tier is the clean-room provenance tier Sextant attaches to each fact.
+type Tier string
+
+const (
+	TierSeen    Tier = "Seen"
+	TierStated  Tier = "Stated"
+	TierUnknown Tier = "Unknown"
+)
+
 // Kind is the type of one fact value.
 type Kind int
 
 const (
-	KindBool Kind = iota + 1
+	KindUnknown Kind = iota + 1
+	KindBool
 	KindInt
 	KindString
 	KindList
 )
 
-// Value is one fact: a boolean, a whole number, a string or a list of
-// strings. Nothing else is allowed among the facts.
+// Value is one tiered fact: either Unknown (with a null value) or Seen/Stated
+// carrying a boolean, a whole number, a string or a list of strings. Nothing
+// else is allowed among the facts.
 type Value struct {
 	Kind Kind
+	Tier Tier
 	Bool bool
 	Int  int64
 	Str  string
@@ -72,10 +85,12 @@ type Value struct {
 
 // Record is one leased item, reduced to what the rules read.
 type Record struct {
-	Lease    string
-	ItemID   string
-	Category string
-	Facts    map[string]Value
+	Lease      string
+	ItemID     string
+	Category   string
+	SubTool    string
+	ObservedOn string
+	Facts      map[string]Value
 }
 
 // ParseLease reads one lease reply strictly.
@@ -83,15 +98,17 @@ type Record struct {
 // A lease reply is the JSON object Muster answers POST /v1/lease with:
 // lease, kind, id, state, lane, attempt, expires, results and, for an item
 // that was reported through Muster, found. Assay scores results.sextant,
-// which must hold a category and a flat map of facts. Results left by other
-// workers, and found, are ignored.
+// which must hold a category, optional sub_tool and observed_on provenance
+// fields, and a flat map of tiered facts ({value, tier}). Results left by
+// other workers, and found, are ignored.
 //
 // Broken data gives E_PARSE: bad JSON, a repeated key, a missing or
-// mistyped field. Well-formed data this build does not recognise gives
-// E_NEEDS_SUBTOOL: a field nobody declared, or an observation that names no
-// category, so that no profile can match it. When a reply is both, E_PARSE
-// is reported, because "valid and unfamiliar" only makes sense once the
-// data is valid.
+// mistyped field, or a fact envelope that breaks the tier rule (value is null
+// if and only if tier is Unknown). Well-formed data this build does not
+// recognise gives E_NEEDS_SUBTOOL: a field nobody declared, or an observation
+// that names no category, so that no profile can match it. When a reply is
+// both, E_PARSE is reported, because "valid and unfamiliar" only makes sense
+// once the data is valid.
 //
 // The returned Record is filled as far as parsing got, so that a failure
 // can still be reported against the right lease.
@@ -187,6 +204,26 @@ func ParseLease(data []byte) (*Record, *errs.Error) {
 		rec.Category = categoryNode.str
 	}
 
+	if subToolNode, hasSubTool := observed.obj["sub_tool"]; hasSubTool {
+		if subToolNode.kind != nodeString {
+			return rec, errs.New(errs.Parse, errs.InvalidType, "sub_tool")
+		}
+		if len(subToolNode.str) > 64 || !subToolPattern.MatchString(subToolNode.str) {
+			return rec, errs.New(errs.Parse, errs.InvalidValue, "sub_tool")
+		}
+		rec.SubTool = subToolNode.str
+	}
+
+	if dateNode, hasDate := observed.obj["observed_on"]; hasDate {
+		if dateNode.kind != nodeString {
+			return rec, errs.New(errs.Parse, errs.InvalidType, "observed_on")
+		}
+		if !validObservedDate(dateNode.str) {
+			return rec, errs.New(errs.Parse, errs.InvalidValue, "observed_on")
+		}
+		rec.ObservedOn = dateNode.str
+	}
+
 	factsNode, hasFacts := observed.obj["facts"]
 	if hasFacts {
 		if factsNode.kind != nodeObject {
@@ -194,9 +231,9 @@ func ParseLease(data []byte) (*Record, *errs.Error) {
 		}
 		facts := make(map[string]Value, len(factsNode.keys))
 		for _, name := range factsNode.keys {
-			v, ok := toValue(factsNode.obj[name])
-			if !ok {
-				return rec, errs.New(errs.Parse, errs.InvalidType, "facts")
+			v, perr := parseFactEnvelope(factsNode.obj[name])
+			if perr != nil {
+				return rec, perr
 			}
 			facts[name] = v
 		}
@@ -216,7 +253,7 @@ func ParseLease(data []byte) (*Record, *errs.Error) {
 	if name := firstUnknown(root, "lease", "kind", "id", "state", "lane", "attempt", "expires", "found", "results"); name != "" {
 		return rec, errs.New(errs.NeedsSubtool, errs.UnknownField, "record", name)
 	}
-	if name := firstUnknown(observed, "category", "facts"); name != "" {
+	if name := firstUnknown(observed, "category", "sub_tool", "observed_on", "facts"); name != "" {
 		return rec, errs.New(errs.NeedsSubtool, errs.UnknownField, Observer, name)
 	}
 	return rec, nil
@@ -269,6 +306,65 @@ func stringField(root node, name string) (string, *errs.Error) {
 		return "", errs.New(errs.Parse, errs.InvalidType, name)
 	}
 	return n.str, nil
+}
+
+func validObservedDate(s string) bool {
+	if len(s) != 10 || s[4] != '-' || s[7] != '-' {
+		return false
+	}
+	for _, i := range []int{0, 1, 2, 3, 5, 6, 8, 9} {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	year, _ := strconv.Atoi(s[0:4])
+	month, _ := strconv.Atoi(s[5:7])
+	day, _ := strconv.Atoi(s[8:10])
+	if year < 1970 || month < 1 || month > 12 || day < 1 {
+		return false
+	}
+	days := [...]int{0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}[month]
+	if month == 2 && (year%4 == 0 && (year%100 != 0 || year%400 == 0)) {
+		days = 29
+	}
+	return day <= days
+}
+
+func parseFactEnvelope(n node) (Value, *errs.Error) {
+	if n.kind != nodeObject {
+		return Value{}, errs.New(errs.Parse, errs.InvalidType, "facts")
+	}
+	tierNode, hasTier := n.obj["tier"]
+	valNode, hasVal := n.obj["value"]
+	if !hasTier || !hasVal {
+		return Value{}, errs.New(errs.Parse, errs.MissingField, "facts")
+	}
+	if len(n.keys) != 2 {
+		return Value{}, errs.New(errs.Parse, errs.InvalidValue, "facts")
+	}
+	if tierNode.kind != nodeString {
+		return Value{}, errs.New(errs.Parse, errs.InvalidType, "facts")
+	}
+	tier := Tier(tierNode.str)
+	switch tier {
+	case TierUnknown:
+		if valNode.kind != nodeNull {
+			return Value{}, errs.New(errs.Parse, errs.InvalidValue, "facts")
+		}
+		return Value{Kind: KindUnknown, Tier: TierUnknown}, nil
+	case TierSeen, TierStated:
+		if valNode.kind == nodeNull {
+			return Value{}, errs.New(errs.Parse, errs.InvalidValue, "facts")
+		}
+		v, ok := toValue(valNode)
+		if !ok {
+			return Value{}, errs.New(errs.Parse, errs.InvalidType, "facts")
+		}
+		v.Tier = tier
+		return v, nil
+	default:
+		return Value{}, errs.New(errs.Parse, errs.InvalidValue, "facts")
+	}
 }
 
 func toValue(n node) (Value, bool) {

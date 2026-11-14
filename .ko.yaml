@@ -4,8 +4,16 @@
 #   KO_DOCKER_REPO=lazarette.clearedstack.svc.cluster.local:5000/assay \
 #     ko build --bare --platform=linux/arm64 ./cmd/assay
 #
-# ko's built-in default base image is a static, shell-less non-root image
-# pinned by digest inside ko; nothing is tagged :latest.
+# The base image is Chainguard's shell-less non-root static image
+# (upstream cgr.dev/chainguard/static@sha256:17367e4d3ae2b46c3290858e483fac09be085c92b372360fe3bf6a6150848fde),
+# imported into Lazarette during cluster bootstrap so Keelworks never reaches
+# outside the cluster at build time. Substitute the Lazarette manifest digest
+# after bootstrap import.
+
+defaultBaseImage: lazarette.clearedstack.svc.cluster.local:5000/static@sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+defaultPlatforms:
+  - linux/arm64
 
 builds:
   - id: assay
@@ -17,3 +25,5 @@ builds:
     ldflags:
       - -s
       - -w
+      - -buildid=
+

@@ -1,0 +1,19 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-2019",
+  "state": "needs_subtool",
+  "category": "devsecops",
+  "profile": "devsecops",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "devsecops",
+    "profile_version": 2
+  },
+  "error": {
+    "code": "E_NEEDS_SUBTOOL",
+    "reason": "no_matching_rule",
+    "where": "private_by_design",
+    "fingerprint": "45593e78aed81ca4"
+  }
+}

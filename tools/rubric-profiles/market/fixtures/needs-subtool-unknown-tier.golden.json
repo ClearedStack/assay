@@ -1,19 +1,19 @@
 {
   "contract": "v1",
   "worker": "assay",
-  "id": "PA-5014",
+  "id": "PA-3015",
   "state": "needs_subtool",
-  "category": "proposal",
-  "profile": "proposal",
+  "category": "market",
+  "profile": "market",
   "rules": {
     "rubric_version": 1,
-    "profile": "proposal",
-    "profile_version": 1
+    "profile": "market",
+    "profile_version": 2
   },
   "error": {
     "code": "E_NEEDS_SUBTOOL",
     "reason": "no_matching_rule",
     "where": "one_job",
-    "fingerprint": "1a0c18e4e9ee7fc9"
+    "fingerprint": "10ead2041a5f13fe"
   }
 }
