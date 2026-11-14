@@ -11,6 +11,7 @@ package muster
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/ClearedStack/assay/internal/errs"
 )
@@ -86,6 +87,10 @@ type Hub interface {
 // so the report has nowhere to go. The hub offers the item again, and
 // because scoring is deterministic the same outcome will be produced then.
 var ErrLeaseGone = errors.New("lease is no longer held")
+
+// errMoveNotAllowed is the stand-in's way of telling its own HTTP face
+// which of the two 409 refusals to send. To a caller it is ErrLeaseGone.
+var errMoveNotAllowed = fmt.Errorf("that move is not allowed: %w", ErrLeaseGone)
 
 func timeoutError() *errs.Error { return errs.New(errs.Timeout, errs.HubTimeout, "hub") }
 func unavailable() *errs.Error  { return errs.New(errs.Timeout, errs.HubUnavailable, "hub") }

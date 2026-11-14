@@ -118,7 +118,7 @@ func (h *HTTP) Send(ctx context.Context, r Report) error {
 	req := request{Contract: contract.Version, Lease: r.Lease}
 	switch r.Call {
 	case CallComplete:
-		if r.State == "" || (len(r.Result) > 0 && !json.Valid(r.Result)) {
+		if r.State == "" || (len(r.Result) > 0 && !isObject(r.Result)) {
 			return rejected()
 		}
 		req.State, req.Result = r.State, r.Result
@@ -134,6 +134,13 @@ func (h *HTTP) Send(ctx context.Context, r Report) error {
 		return h.call(ctx, pathNeedsSubtool, req)
 	}
 	return rejected()
+}
+
+// isObject reports whether data is one JSON object, the only form a result
+// may take.
+func isObject(data []byte) bool {
+	var obj map[string]json.RawMessage
+	return json.Unmarshal(data, &obj) == nil && obj != nil
 }
 
 // call makes a call whose only answer that matters is "acknowledged".

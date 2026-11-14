@@ -1,14 +1,10 @@
 package rubricprofiles
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"sort"
-
-	"go.yaml.in/yaml/v3"
 )
 
 // Name is this sub-tool's name in tools/registry.yaml.
@@ -84,19 +80,4 @@ func (s *Set) Match(category string) *Profile {
 // Categories lists the categories that have a profile, in name order.
 func (s *Set) Categories() []string {
 	return append([]string(nil), s.categories...)
-}
-
-// decodeStrict reads exactly one YAML document into out. A key the struct
-// does not have, or a key given twice, is an error.
-func decodeStrict(data []byte, out any) error {
-	dec := yaml.NewDecoder(bytes.NewReader(data))
-	dec.KnownFields(true)
-	if err := dec.Decode(out); err != nil {
-		return err
-	}
-	var extra any
-	if err := dec.Decode(&extra); err != io.EOF {
-		return errors.New("more than one YAML document in the file")
-	}
-	return nil
 }

@@ -6,9 +6,7 @@
 sub_tools:
   - name: rubric-profiles
     path: rubric-profiles
-    responsibility: >-
-      Category-specific rule sets and golden test fixtures defining
-      deterministic gate checks and rubric factor mappings.
+    responsibility: "Category-specific rule sets and golden test fixtures defining deterministic gate checks and rubric factor mappings."
     parts:
       match: "<category>/match.yaml"
       logic: "rubric.yaml, <category>/profile.yaml and the Go code in the folder"
