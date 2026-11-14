@@ -3,10 +3,11 @@
   "worker": "assay",
   "id": "PA-1017",
   "category": "cyber",
+  "profile": "cyber",
   "rules": {
     "rubric_version": 1,
     "profile": "cyber",
-    "profile_version": 1
+    "profile_version": 2
   },
   "error": {
     "code": "E_PARSE",

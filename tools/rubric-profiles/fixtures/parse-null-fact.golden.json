@@ -5,8 +5,8 @@
   "category": "pricing",
   "error": {
     "code": "E_PARSE",
-    "reason": "invalid_type",
+    "reason": "invalid_value",
     "where": "facts",
-    "fingerprint": "48b0c10af6684698"
+    "fingerprint": "a5a65095b155355e"
   }
 }

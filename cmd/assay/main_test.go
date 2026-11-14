@@ -60,7 +60,7 @@ func TestEvalText(t *testing.T) {
 		{"reject.txt", "pricing/fixtures/reject.input.json", exitOK},
 		{"split-merge.txt", "pricing/fixtures/build-split-merge.input.json", exitOK},
 		{"screened-out.txt", "pricing/fixtures/screened-out-all-gates.input.json", exitOK},
-		{"needs-subtool.txt", "pricing/fixtures/needs-subtool-unlisted-verb.input.json", exitNeedsSubtool},
+		{"needs-subtool.txt", "pricing/fixtures/needs-subtool-unknown-tier.input.json", exitNeedsSubtool},
 		{"unknown-category.txt", "fixtures/needs-subtool-unknown-category.input.json", exitNeedsSubtool},
 		{"parse.txt", "pricing/fixtures/parse-wrong-type.input.json", exitParse},
 		{"malformed.txt", "fixtures/parse-malformed-json.input.json", exitParse},
@@ -95,7 +95,7 @@ func TestEvalReadsStandardInput(t *testing.T) {
 		t.Fatal(err)
 	}
 	code, out, _ := runCLI(t, string(raw), noEnv, "eval", "-")
-	if code != exitOK || !strings.Contains(out, "Recommendation: Link") {
+	if code != exitOK || !strings.Contains(out, "Recommendation: link") {
 		t.Errorf("exit %d, output:\n%s", code, out)
 	}
 }

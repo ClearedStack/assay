@@ -123,13 +123,13 @@ func TestRecommendationsMatchTheSpecification(t *testing.T) {
 			var want string
 			switch {
 			case total >= 75 && gap > 1:
-				want = "Build"
+				want = "build"
 			case total >= 75 && gap == 1:
-				want = "Link"
+				want = "link"
 			case total >= 55 && total <= 74:
-				want = "Park"
+				want = "park"
 			case total < 55:
-				want = "Reject"
+				want = "reject"
 			}
 			if got := r.Recommend(total, ratings); got != want {
 				t.Fatalf("total %d, gap %d: got %s, want %s", total, gap, got, want)
@@ -148,7 +148,7 @@ func TestRecommendationsMatchTheSpecification(t *testing.T) {
 		}
 	}
 	walk(0, 0)
-	for _, name := range []string{"Build", "Link", "Park", "Reject"} {
+	for _, name := range []string{"build", "link", "park", "reject"} {
 		if seen[name] == 0 {
 			t.Errorf("no set of ratings gives %s", name)
 		}
@@ -163,21 +163,25 @@ func TestLoadRefusesBadRuleData(t *testing.T) {
 		new  string
 		want string // part of the error
 	}{
-		{"unknown key in profile", "pricing/profile.yaml", "version: 1", "version: 1\ndefault_rating: 3", "default_rating"},
-		{"second YAML document", "pricing/profile.yaml", "version: 1", "version: 1\n---\nversion: 2", ""},
+		{"unknown key in profile", "pricing/profile.yaml", "version: 2", "version: 2\ndefault_rating: 3", "default_rating"},
+		{"second YAML document", "pricing/profile.yaml", "version: 2", "version: 2\n---\nversion: 3", ""},
 		{"profile name differs from folder", "pricing/profile.yaml", "profile: pricing", "profile: prices", "folder"},
 		{"condition on undeclared fact", "pricing/profile.yaml", "- when: {needs_backend: {eq: true}}", "- when: {has_backend: {eq: true}}", "undeclared fact"},
 		{"catch-all row", "pricing/profile.yaml", "- when: {needs_backend: {eq: true}}", "- when: {}", "at least one condition"},
 		{"row without pass", "pricing/profile.yaml", "pass: false\n      reason: \"It needs a backend server.\"", "reason: \"It needs a backend server.\"", "pass is missing"},
 		{"row without reason", "pricing/profile.yaml", "reason: \"It needs a backend server.\"", "reason: \" \"", "reason is missing"},
-		{"rating out of range", "pricing/profile.yaml", "- when: {need_signals: {gte: 40}}\n      rating: 5", "- when: {need_signals: {gte: 40}}\n      rating: 6", "rating must be 1 to 5"},
+		{"rating out of range", "pricing/profile.yaml", "- when: {need_signals: {gte: 30}}\n      rating: 5", "- when: {need_signals: {gte: 30}}\n      rating: 6", "rating must be 1 to 5"},
 		{"operator for the wrong type", "pricing/profile.yaml", "{needs_backend: {eq: true}}", "{needs_backend: {gte: 1}}", "does not apply"},
 		{"eq of the wrong kind", "pricing/profile.yaml", "{needs_backend: {eq: true}}", "{needs_backend: {eq: 1}}", "true or false"},
 		{"value outside the declared set", "pricing/profile.yaml", "{best_alternative: {in: [none]}}", "{best_alternative: {in: [nothing]}}", "declared values"},
 		{"threshold outside the declared range", "pricing/profile.yaml", "{worked_examples: {gte: 10}}", "{worked_examples: {gte: 10001}}", "outside the declared range"},
-		{"impossible range", "pricing/profile.yaml", "{need_signals: {gte: 20, lte: 39}}", "{need_signals: {gte: 39, lte: 20}}", "never match"},
+		{"impossible range", "pricing/profile.yaml", "{need_signals: {gte: 15, lte: 29}}", "{need_signals: {gte: 29, lte: 15}}", "never match"},
 		{"empty value list", "pricing/profile.yaml", "{best_alternative: {in: [none]}}", "{best_alternative: {in: []}}", "never match"},
-		{"upper-case verb", "pricing/profile.yaml", "first_word_in: [compute,", "first_word_in: [Compute,", "lower-case"},
+		{"empty tier_in list", "pricing/profile.yaml", "tier_in: [Seen]", "tier_in: []", "never match"},
+		{"lower-case tier in tier_in", "pricing/profile.yaml", "tier_in: [Seen]", "tier_in: [seen]", "Seen, Stated or Unknown"},
+		{"duplicate tier in tier_in", "pricing/profile.yaml", "tier_in: [Seen]", "tier_in: [Seen, Seen]", "listed twice"},
+		{"Unknown tier with value operator", "pricing/profile.yaml", "tier_in: [Seen]", "tier_in: [Unknown]", "Unknown has no value"},
+		{"free-text fact type forbidden", "pricing/profile.yaml", "source_public: {type: bool}", "source_public: {type: text}", "unknown type"},
 		{"gate with no rows", "pricing/profile.yaml", "  arithmetic_not_advice:\n    - when: {output_kinds: {any_in: [legal_advice, compliance_determination]}}\n      pass: false\n      reason: \"It renders advice or a legal conclusion.\"\n    - when: {output_kinds: {all_in: [computed_number, structured_data, citation_lookup]}}\n      pass: true\n      reason: \"It computes numbers, structures data or looks up citations.\"\n", "  arithmetic_not_advice: []\n", "has no rows"},
 		{"gate the rubric does not have", "pricing/profile.yaml", "\nfactors:\n", "\n  sixth_gate:\n    - when: {needs_backend: {eq: true}}\n      pass: false\n      reason: \"No.\"\n\nfactors:\n", "rubric does not have"},
 		{"int without bounds", "pricing/profile.yaml", "task_count: {type: int, min: 1, max: 100}", "task_count: {type: int}", "min and max"},
@@ -245,37 +249,50 @@ func TestFixturesFolderIsNotACategory(t *testing.T) {
 	}
 }
 
-func TestFirstWord(t *testing.T) {
-	cases := map[string]string{
-		"Compute a rate.":     "compute",
-		"  CONVERT rates":     "convert",
-		"\tlook up a code":    "look",
-		"re-compute a rate":   "re",
-		"8 ways to compute":   "",
-		"":                    "",
-		"«Compute» a rate":    "",
-		"compute":             "compute",
-		"Compute, then total": "compute",
-	}
-	for in, want := range cases {
-		if got := firstWord(in); got != want {
-			t.Errorf("firstWord(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
-
 func pricingFacts() map[string]contract.Value {
-	b := func(v bool) contract.Value { return contract.Value{Kind: contract.KindBool, Bool: v} }
-	i := func(v int64) contract.Value { return contract.Value{Kind: contract.KindInt, Int: v} }
-	s := func(v string) contract.Value { return contract.Value{Kind: contract.KindString, Str: v} }
+	b := func(v bool) contract.Value { return contract.Value{Kind: contract.KindBool, Tier: contract.TierSeen, Bool: v} }
+	i := func(v int64) contract.Value { return contract.Value{Kind: contract.KindInt, Tier: contract.TierSeen, Int: v} }
+	s := func(v string) contract.Value { return contract.Value{Kind: contract.KindString, Tier: contract.TierSeen, Str: v} }
 	return map[string]contract.Value{
 		"source_kind": s("far"), "source_public": b(true), "source_precision": s("exact_formula"),
 		"client_runtime": s("browser_js"), "needs_backend": b(false), "needs_remote_api": b(false), "largest_input_kb": i(40),
 		"works_offline": b(true), "needs_account": b(false), "emits_tracking": b(false), "connect_src_self": b(true),
-		"task_count": i(1), "task_sentence": s("Compute a made-up rate."),
-		"output_kinds": {Kind: contract.KindList, List: []string{"computed_number"}},
-		"need_signals": i(27), "best_alternative": s("paid_only"), "est_source_lines": i(650), "worked_examples": i(6),
+		"task_count": i(1), "core_job": s("rate_calculation"),
+		"output_kinds": {Kind: contract.KindList, Tier: contract.TierSeen, List: []string{"computed_number"}},
+		"need_signals": i(20), "best_alternative": s("paid_only"), "est_source_lines": i(500), "worked_examples": i(6),
 		"reference_updates_per_year": i(1), "rate_tables": i(2), "roadmap_phase_fit": i(2), "community_demand": i(14),
+	}
+}
+
+func TestTierConditions(t *testing.T) {
+	set, err := Load(os.DirFS("."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := set.Match("pricing")
+
+	// Stated core_job satisfies ordinary enum value checks.
+	statedJob := pricingFacts()
+	statedJob["core_job"] = contract.Value{Kind: contract.KindString, Tier: contract.TierStated, Str: "rate_calculation"}
+	if d, ok := p.Gate("one_job", statedJob); !ok || !d.Pass {
+		t.Fatalf("Stated core_job should pass one_job, got %+v, %v", d, ok)
+	}
+
+	// Stated emits_tracking=false does not satisfy tier_in: [Seen] on private_by_design.
+	statedPrivacy := pricingFacts()
+	statedPrivacy["emits_tracking"] = contract.Value{Kind: contract.KindBool, Tier: contract.TierStated, Bool: false}
+	if _, ok := p.Gate("private_by_design", statedPrivacy); ok {
+		t.Fatal("Stated emits_tracking=false must pause private_by_design rather than passing")
+	}
+
+	// Unknown fact passes CheckFacts and fails closed (ok=false) in rule evaluation.
+	unknownJob := pricingFacts()
+	unknownJob["core_job"] = contract.Value{Kind: contract.KindUnknown, Tier: contract.TierUnknown}
+	if perr := p.CheckFacts(unknownJob); perr != nil {
+		t.Fatalf("Unknown fact should pass CheckFacts, got %v", perr)
+	}
+	if _, ok := p.Gate("one_job", unknownJob); ok {
+		t.Fatal("Unknown core_job must fail closed with no matching rule")
 	}
 }
 
@@ -289,7 +306,9 @@ func TestCheckFacts(t *testing.T) {
 		t.Fatalf("good facts refused: %v", perr)
 	}
 
-	str := func(v string) contract.Value { return contract.Value{Kind: contract.KindString, Str: v} }
+	str := func(v string) contract.Value {
+		return contract.Value{Kind: contract.KindString, Tier: contract.TierSeen, Str: v}
+	}
 	cases := []struct {
 		name   string
 		change func(f map[string]contract.Value)
@@ -299,20 +318,22 @@ func TestCheckFacts(t *testing.T) {
 	}{
 		{"missing", func(f map[string]contract.Value) { delete(f, "task_count") }, errs.Parse, errs.MissingFact, "task_count"},
 		{"bool as string", func(f map[string]contract.Value) { f["needs_backend"] = str("false") }, errs.Parse, errs.InvalidType, "needs_backend"},
-		{"enum as int", func(f map[string]contract.Value) { f["source_kind"] = contract.Value{Kind: contract.KindInt} }, errs.Parse, errs.InvalidType, "source_kind"},
+		{"enum as int", func(f map[string]contract.Value) {
+			f["source_kind"] = contract.Value{Kind: contract.KindInt, Tier: contract.TierSeen}
+		}, errs.Parse, errs.InvalidType, "source_kind"},
 		{"list as string", func(f map[string]contract.Value) { f["output_kinds"] = str("computed_number") }, errs.Parse, errs.InvalidType, "output_kinds"},
-		{"below range", func(f map[string]contract.Value) { f["task_count"] = contract.Value{Kind: contract.KindInt, Int: 0} }, errs.Parse, errs.OutOfRange, "task_count"},
+		{"below range", func(f map[string]contract.Value) {
+			f["task_count"] = contract.Value{Kind: contract.KindInt, Tier: contract.TierSeen, Int: 0}
+		}, errs.Parse, errs.OutOfRange, "task_count"},
 		{"above range", func(f map[string]contract.Value) {
-			f["roadmap_phase_fit"] = contract.Value{Kind: contract.KindInt, Int: 4}
+			f["roadmap_phase_fit"] = contract.Value{Kind: contract.KindInt, Tier: contract.TierSeen, Int: 4}
 		}, errs.Parse, errs.OutOfRange, "roadmap_phase_fit"},
-		{"blank text", func(f map[string]contract.Value) { f["task_sentence"] = str("   ") }, errs.Parse, errs.InvalidValue, "task_sentence"},
-		{"text too long", func(f map[string]contract.Value) { f["task_sentence"] = str(strings.Repeat("a", 201)) }, errs.Parse, errs.InvalidValue, "task_sentence"},
-		{"control character", func(f map[string]contract.Value) { f["task_sentence"] = str("Compute\x07 a rate") }, errs.Parse, errs.InvalidValue, "task_sentence"},
 		{"repeated list item", func(f map[string]contract.Value) {
-			f["output_kinds"] = contract.Value{Kind: contract.KindList, List: []string{"computed_number", "computed_number"}}
+			f["output_kinds"] = contract.Value{Kind: contract.KindList, Tier: contract.TierSeen, List: []string{"computed_number", "computed_number"}}
 		}, errs.Parse, errs.InvalidValue, "output_kinds"},
 		{"undeclared fact", func(f map[string]contract.Value) { f["margin_basis"] = str("x") }, errs.NeedsSubtool, errs.UnknownFact, "facts"},
 		{"unfamiliar enum value", func(f map[string]contract.Value) { f["client_runtime"] = str("smart_tv") }, errs.NeedsSubtool, errs.UnknownValue, "client_runtime"},
+		{"unfamiliar core_job value", func(f map[string]contract.Value) { f["core_job"] = str("freeform_chat") }, errs.NeedsSubtool, errs.UnknownValue, "core_job"},
 		{"broken beats unfamiliar", func(f map[string]contract.Value) {
 			f["margin_basis"] = str("x")
 			f["client_runtime"] = str("smart_tv")
@@ -368,7 +389,7 @@ func TestNumericTablesHaveNoHoles(t *testing.T) {
 			for v := def.min; v <= limit; v++ {
 				n := 0
 				for _, row := range rows {
-					if row.when[0].holds(contract.Value{Kind: contract.KindInt, Int: v}) {
+					if row.when[0].holds(contract.Value{Kind: contract.KindInt, Tier: contract.TierSeen, Int: v}) {
 						n++
 					}
 				}

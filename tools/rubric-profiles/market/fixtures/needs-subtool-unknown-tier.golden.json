@@ -1,18 +1,19 @@
 {
   "contract": "v1",
   "worker": "assay",
-  "id": "PA-1015",
+  "id": "PA-3015",
   "state": "needs_subtool",
-  "category": "cyber",
+  "category": "market",
+  "profile": "market",
   "rules": {
     "rubric_version": 1,
-    "profile": "cyber",
-    "profile_version": 1
+    "profile": "market",
+    "profile_version": 2
   },
   "error": {
     "code": "E_NEEDS_SUBTOOL",
     "reason": "no_matching_rule",
     "where": "one_job",
-    "fingerprint": "4aa82a27d8b5e653"
+    "fingerprint": "10ead2041a5f13fe"
   }
 }

@@ -124,19 +124,36 @@ func TestPodHardening(t *testing.T) {
 	if len(volumes) != 1 || at(t, volumes[0], "emptyDir") == nil {
 		t.Errorf("the only volume must be the spool, got %v", volumes)
 	}
-	// Memory budget.
+	// Memory budget and small resource requests.
 	if c.Memory != "30 MiB" || at(t, ctr, "resources", "limits", "memory") != "30Mi" {
 		t.Errorf("the memory limit must be the %s budget", c.Memory)
+	}
+	if at(t, ctr, "resources", "requests", "cpu") != "10m" || at(t, ctr, "resources", "requests", "memory") != "30Mi" {
+		t.Errorf("want small resource requests (10m CPU, 30Mi memory, as deployed), got %v", at(t, ctr, "resources", "requests"))
+	}
+	// Node affinity: arm64 only, excluding cm3588-plus.
+	exprs := at(t, pod, "affinity", "nodeAffinity", "requiredDuringSchedulingIgnoredDuringExecution", "nodeSelectorTerms", 0, "matchExpressions").([]any)
+	wantAffinity := map[string]string{}
+	for _, raw := range exprs {
+		m := raw.(map[string]any)
+		vals := m["values"].([]any)
+		if len(vals) == 1 {
+			wantAffinity[m["key"].(string)+":"+m["operator"].(string)] = vals[0].(string)
+		}
+	}
+	if wantAffinity["kubernetes.io/arch:In"] != "arm64" || wantAffinity["kubernetes.io/hostname:NotIn"] != "cm3588-plus" {
+		t.Errorf("nodeAffinity must require arch In arm64 and hostname NotIn cm3588-plus, got %v", exprs)
 	}
 	// Zero database credentials: no secret, no env taken from anywhere.
 	if _, ok := ctr.(map[string]any)["envFrom"]; ok {
 		t.Error("the container must not take its environment from a secret or config map")
 	}
-	names := map[string]bool{}
+	names := map[string]string{}
 	for _, e := range at(t, ctr, "env").([]any) {
 		entry := e.(map[string]any)
 		name := entry["name"].(string)
-		names[name] = true
+		val, _ := entry["value"].(string)
+		names[name] = val
 		if _, ok := entry["valueFrom"]; ok {
 			t.Errorf("env %s is taken from another object", name)
 		}
@@ -144,15 +161,15 @@ func TestPodHardening(t *testing.T) {
 			t.Errorf("env %s looks like a credential", name)
 		}
 	}
-	if !names["CONTRACT_VERSION"] || !names["MUSTER_URL"] {
-		t.Error("CONTRACT_VERSION and MUSTER_URL must be set")
+	if names["CONTRACT_VERSION"] != "v1" || names["MUSTER_URL"] != "http://muster.clearedstack.svc.cluster.local:8080" {
+		t.Errorf("CONTRACT_VERSION and MUSTER_URL (:8080) must be set, got %v", names)
 	}
 	// Named by the slug alone: the deployer gives the registry and the
 	// digest with an image override.
 	if image := at(t, ctr, "image").(string); image != c.Slug {
 		t.Errorf("the image must be the component's slug and nothing more, got %q", image)
 	}
-	if !strings.HasSuffix("github.com/ClearedStack/"+c.Image, "/"+c.Slug) {
+	if c.Image != c.Slug {
 		t.Error("the image name must be the component's slug")
 	}
 	if args := at(t, ctr, "args").([]any); len(args) != 1 || args[0] != "run" {
@@ -177,8 +194,11 @@ func TestNetworkPolicyIsDefaultDenyWithOneWayOut(t *testing.T) {
 		at(t, egress[0], "to", 0, "podSelector", "matchLabels", "app.kubernetes.io/name") != "muster" {
 		t.Error("the first way out must be Muster in the clearedstack namespace")
 	}
-	if ports := at(t, egress[0], "ports").([]any); len(ports) != 1 || at(t, ports[0], "protocol") != "TCP" {
-		t.Errorf("Muster is reached on one TCP port, got %v", ports)
+	if ports := at(t, egress[0], "ports").([]any); len(ports) != 1 || at(t, ports[0], "protocol") != "TCP" || at(t, ports[0], "port") != 8080 {
+		t.Errorf("Muster is reached on TCP 8080, got %v", ports)
+	}
+	if at(t, egress[1], "to", 0, "namespaceSelector", "matchLabels", "kubernetes.io/metadata.name") != "kube-system" {
+		t.Error("the second way out must be kube-system for DNS")
 	}
 	for _, p := range at(t, egress[1], "ports").([]any) {
 		if at(t, p, "port") != 53 {
@@ -188,8 +208,8 @@ func TestNetworkPolicyIsDefaultDenyWithOneWayOut(t *testing.T) {
 	for _, rule := range egress {
 		for _, peer := range at(t, rule, "to").([]any) {
 			m := peer.(map[string]any)
-			if m["ipBlock"] != nil || m["namespaceSelector"] == nil || m["podSelector"] == nil {
-				t.Errorf("each way out must name both a namespace and its pods, got %v", m)
+			if m["ipBlock"] != nil || m["namespaceSelector"] == nil {
+				t.Errorf("each way out must name a namespace selector and never an ipBlock, got %v", m)
 			}
 		}
 	}
@@ -220,9 +240,27 @@ func TestNoDockerfile(t *testing.T) {
 	if err != nil {
 		t.Fatalf(".ko.yaml: %v", err)
 	}
+	basePinned := regexp.MustCompile(`^cgr\.dev/chainguard/static@sha256:[0-9a-f]{64}$`)
+	if base, _ := cfg.Value().(map[string]any)["defaultBaseImage"].(string); !basePinned.MatchString(base) {
+		t.Errorf(".ko.yaml defaultBaseImage must be Chainguard static pinned by digest, got %q", base)
+	}
+	platforms, _ := cfg.Value().(map[string]any)["defaultPlatforms"].([]any)
+	if len(platforms) != 1 || platforms[0] != "linux/arm64" {
+		t.Errorf(".ko.yaml defaultPlatforms must be [linux/arm64], got %v", platforms)
+	}
 	builds, _ := cfg.Value().(map[string]any)["builds"].([]any)
 	if len(builds) != 1 || at(t, builds[0], "main") != "./cmd/assay" {
 		t.Errorf(".ko.yaml must build ./cmd/assay and nothing else")
+	}
+	ldflags, _ := at(t, builds[0], "ldflags").([]any)
+	hasBuildID := false
+	for _, f := range ldflags {
+		if f == "-buildid=" {
+			hasBuildID = true
+		}
+	}
+	if !hasBuildID {
+		t.Errorf(".ko.yaml ldflags must include -buildid= for reproducible digests, got %v", ldflags)
 	}
 }
 
@@ -247,7 +285,7 @@ func TestStandardLibraryOnly(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() && (d.Name() == ".git" || d.Name() == "third_party") {
+		if d.IsDir() && d.Name() == ".git" {
 			return filepath.SkipDir
 		}
 		if d.IsDir() || !strings.HasSuffix(path, ".go") {
@@ -291,6 +329,31 @@ func TestStandardLibraryOnly(t *testing.T) {
 	license, err := os.ReadFile("LICENSE")
 	if err != nil || !strings.HasPrefix(string(license), "MIT License") {
 		t.Error("the repository must keep its MIT LICENSE file")
+	}
+}
+
+func TestNoEmDashes(t *testing.T) {
+	err := filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() && d.Name() == ".git" {
+			return filepath.SkipDir
+		}
+		if d.IsDir() {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if strings.ContainsRune(string(data), '\u2014') {
+			t.Errorf("%s contains an em dash (U+2014)", path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

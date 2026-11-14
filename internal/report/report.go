@@ -45,7 +45,7 @@ func Text(w io.Writer, o *contract.Outcome) error {
 		b.WriteString("\nKnockout gates\n")
 		for _, g := range o.Gates {
 			verdict := "PASS"
-			if !g.Pass {
+			if !g.Passed {
 				verdict = "FAIL"
 			}
 			fmt.Fprintf(&b, "  %s  %-24s%s\n", verdict, g.Name, g.Reason)
@@ -57,17 +57,17 @@ func Text(w io.Writer, o *contract.Outcome) error {
 		for _, f := range o.Factors {
 			fmt.Fprintf(&b, "  %-30s%d x %d = %3d\n", f.Name, f.Rating, f.Weight, f.Points)
 		}
-		if o.Total != nil {
-			fmt.Fprintf(&b, "  %-30s        %3d / 100\n", "Total", *o.Total)
+		if o.Score != nil {
+			fmt.Fprintf(&b, "  %-30s        %3d / 100\n", "Total", *o.Score)
 		}
 	}
 
 	if o.Recommendation != "" {
 		fmt.Fprintf(&b, "\nRecommendation: %s\n", o.Recommendation)
 	}
-	if o.SplitMergeReview != nil {
+	if o.SplitFlag != nil {
 		answer := "no"
-		if *o.SplitMergeReview {
+		if *o.SplitFlag {
 			answer = "yes"
 		}
 		fmt.Fprintf(&b, "Split/merge review: %s\n", answer)

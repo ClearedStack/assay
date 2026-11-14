@@ -23,16 +23,17 @@ factors:
   - {id: low_upkeep, name: "Low upkeep of reference data", weight: 2}
 
 # Exactly one of these applies to any set of ratings; the loader proves it.
+# Spelled in lower case, as Logbook's core.recommendations() requires.
 recommendations:
-  - name: Build
+  - name: build
     total: {min: 75}
     factor: {factor: gap, min: 2}
-  - name: Link
+  - name: link
     total: {min: 75}
     factor: {factor: gap, max: 1}
-  - name: Park
+  - name: park
     total: {min: 55, max: 74}
-  - name: Reject
+  - name: reject
     total: {max: 54}
 
 # Flag for split/merge review when every condition holds.

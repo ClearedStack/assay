@@ -43,6 +43,7 @@ func (e *Engine) Evaluate(raw []byte) *contract.Outcome {
 		return stop(out, errs.New(errs.NeedsSubtool, errs.UnknownCategory, "category", rec.Category))
 	}
 	rubric := e.set.Rubric
+	out.Profile = profile.ID
 	out.Rules = &contract.RulesRef{Rubric: rubric.Version, Profile: profile.ID, ProfileVersion: profile.Version}
 
 	if perr := profile.CheckFacts(rec.Facts); perr != nil {
@@ -51,7 +52,8 @@ func (e *Engine) Evaluate(raw []byte) *contract.Outcome {
 
 	// Stage 1: all five gates are decided, even after one fails, so that
 	// every reason for screening a candidate out is on the public record.
-	gates := make([]contract.GateResult, 0, len(rubric.Gates))
+	gates := make(contract.GateVerdicts, 0, len(rubric.Gates))
+	gateRules := make(contract.RuleRows, 0, len(rubric.Gates))
 	cleared := true
 	for _, g := range rubric.Gates {
 		d, ok := profile.Gate(g.ID, rec.Facts)
@@ -59,49 +61,62 @@ func (e *Engine) Evaluate(raw []byte) *contract.Outcome {
 			return stop(out, errs.New(errs.NeedsSubtool, errs.NoMatchingRule, g.ID, rec.Category))
 		}
 		cleared = cleared && d.Pass
-		gates = append(gates, contract.GateResult{ID: g.ID, Name: g.Name, Pass: d.Pass, Rule: d.Rule, Reason: d.Reason})
+		gates = append(gates, contract.GateResult{ID: g.ID, Name: g.Name, Passed: d.Pass, Rule: d.Rule, Reason: d.Reason})
+		gateRules = append(gateRules, contract.RuleRow{ID: g.ID, Rule: d.Rule})
 	}
 	out.Gates = gates
+	out.Rules.Gates = gateRules
 	if !cleared {
 		out.State = contract.StateScreenedOut
 		return out
 	}
 
 	// Stage 2: the rubric.
-	factors := make([]contract.FactorResult, 0, len(rubric.Factors))
+	factors := make(contract.FactorRatings, 0, len(rubric.Factors))
+	factorRules := make(contract.RuleRows, 0, len(rubric.Factors))
 	ratings := make(map[string]int, len(rubric.Factors))
-	total := 0
+	score := 0
 	for _, f := range rubric.Factors {
 		rating, rule, ok := profile.Factor(f.ID, rec.Facts)
 		if !ok {
 			out.Gates = nil
+			out.Rules.Gates = nil
 			return stop(out, errs.New(errs.NeedsSubtool, errs.NoMatchingRule, f.ID, rec.Category))
 		}
 		ratings[f.ID] = rating
-		total += rating * f.Weight
+		score += rating * f.Weight
 		factors = append(factors, contract.FactorResult{
 			ID: f.ID, Name: f.Name, Rating: rating, Weight: f.Weight, Points: rating * f.Weight, Rule: rule,
 		})
+		factorRules = append(factorRules, contract.RuleRow{ID: f.ID, Rule: rule})
 	}
-	out.Factors = factors
-	out.Total = &total
-
-	// Stage 3: recommendation and split/merge flag.
-	out.Recommendation = rubric.Recommend(total, ratings)
-	flag := rubric.SplitMergeReview(ratings)
-	out.SplitMergeReview = &flag
-
-	// Stage 4: tie-breaker values, in the rubric's order.
+	// Stage 4: tie-breaker values, in the rubric's order. If a fact-backed
+	// tie-breaker was observed as Unknown, pause rather than inventing a zero.
 	ties := make([]contract.TieBreaker, 0, len(rubric.TieBreakers))
 	for _, t := range rubric.TieBreakers {
 		var v int64
 		if t.Factor != "" {
 			v = int64(ratings[t.Factor])
 		} else {
-			v = rec.Facts[t.Fact].Int
+			fv := rec.Facts[t.Fact]
+			if fv.Kind == contract.KindUnknown {
+				out.Gates = nil
+				out.Rules.Gates = nil
+				return stop(out, errs.New(errs.NeedsSubtool, errs.NoMatchingRule, t.Fact, rec.Category))
+			}
+			v = fv.Int
 		}
 		ties = append(ties, contract.TieBreaker{ID: t.ID, Name: t.Name, Value: v})
 	}
+
+	out.Factors = factors
+	out.Rules.Factors = factorRules
+	out.Score = &score
+
+	// Stage 3: recommendation and split/merge flag.
+	out.Recommendation = rubric.Recommend(score, ratings)
+	flag := rubric.SplitMergeReview(ratings)
+	out.SplitFlag = &flag
 	out.TieBreakers = ties
 
 	out.State = contract.StateScored
@@ -121,12 +136,12 @@ func stop(out *contract.Outcome, e *errs.Error) *contract.Outcome {
 // Compare orders two scored outcomes. It returns a negative number when a
 // sorts before b.
 //
-// The order is: higher total first; then each tie-breaker in turn, higher
+// The order is: higher score first; then each tie-breaker in turn, higher
 // value first; then the item number, lower first, so that two candidates can
 // never be left in an undefined order.
 func Compare(a, b *contract.Outcome) int {
-	if a.Total != nil && b.Total != nil && *a.Total != *b.Total {
-		if *a.Total > *b.Total {
+	if a.Score != nil && b.Score != nil && *a.Score != *b.Score {
+		if *a.Score > *b.Score {
 			return -1
 		}
 		return 1

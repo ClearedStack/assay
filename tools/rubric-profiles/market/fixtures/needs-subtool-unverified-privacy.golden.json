@@ -1,18 +1,19 @@
 {
   "contract": "v1",
   "worker": "assay",
-  "id": "PA-2015",
+  "id": "PA-3018",
   "state": "needs_subtool",
-  "category": "devsecops",
+  "category": "market",
+  "profile": "market",
   "rules": {
     "rubric_version": 1,
-    "profile": "devsecops",
-    "profile_version": 1
+    "profile": "market",
+    "profile_version": 2
   },
   "error": {
     "code": "E_NEEDS_SUBTOOL",
     "reason": "no_matching_rule",
-    "where": "one_job",
-    "fingerprint": "6ff5bfc4979009bf"
+    "where": "private_by_design",
+    "fingerprint": "d40ae7ead25066c7"
   }
 }

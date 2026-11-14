@@ -5,18 +5,13 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/ClearedStack/assay/internal/contract"
 	"github.com/ClearedStack/assay/internal/errs"
 	"github.com/ClearedStack/assay/internal/yamlite"
 )
 
-var (
-	valuePattern = regexp.MustCompile(`^[a-z0-9_]{1,64}$`)
-	wordPattern  = regexp.MustCompile(`^[a-z]{1,32}$`)
-)
+var valuePattern = regexp.MustCompile(`^[a-z0-9_]{1,64}$`)
 
 type factType string
 
@@ -24,30 +19,30 @@ const (
 	typeBool factType = "bool"
 	typeInt  factType = "int"
 	typeEnum factType = "enum"
-	typeText factType = "text"
 	typeList factType = "list"
 )
 
 // factDef declares one fact a profile reads: its name, its type and its
-// limits. A record must carry every declared fact and no other.
+// limits. Every fact comes from a closed vocabulary or bounded integer range
+// so no free text from an observed page can enter Assay.
 type factDef struct {
-	typ       factType
-	values    map[string]bool // enum and list
-	min, max  int64           // int
-	maxLength int             // text
+	typ      factType
+	values   map[string]bool // enum and list
+	min, max int64           // int
 }
 
 // cond is one condition on one fact. Every operator present must hold.
 type cond struct {
-	fact      string
-	typ       factType
-	eqBool    *bool
-	eqInt     *int64
-	gte, lte  *int64
-	in        map[string]bool
-	anyIn     map[string]bool
-	allIn     map[string]bool
-	firstWord map[string]bool
+	fact     string
+	typ      factType
+	tiers    map[contract.Tier]bool
+	tierOnly bool
+	eqBool   *bool
+	eqInt    *int64
+	gte, lte *int64
+	in       map[string]bool
+	anyIn    map[string]bool
+	allIn    map[string]bool
 }
 
 type gateRow struct {
@@ -83,21 +78,20 @@ type GateDecision struct {
 
 // The shapes below are what a profile file holds before it is checked.
 type factYAML struct {
-	Type      string
-	Values    []string
-	Min       *int64
-	Max       *int64
-	MaxLength *int
+	Type   string
+	Values []string
+	Min    *int64
+	Max    *int64
 }
 
 type condYAML struct {
-	Eq          any // true, false or a whole number; nil when absent
-	Gte         *int64
-	Lte         *int64
-	In          []string
-	AnyIn       []string
-	AllIn       []string
-	FirstWordIn []string
+	Eq     any // true, false or a whole number; nil when absent
+	Gte    *int64
+	Lte    *int64
+	In     []string
+	AnyIn  []string
+	AllIn  []string
+	TierIn []string
 }
 
 type gateRowYAML struct {
@@ -139,12 +133,8 @@ func readProfile(data []byte) (*profileYAML, error) {
 	}
 
 	for _, name := range factNames {
-		f := facts[name].Read("type", "values", "min", "max", "max_length")
+		f := facts[name].Read("type", "values", "min", "max")
 		fy := factYAML{Type: f.String("type"), Values: f.OptStrings("values"), Min: f.OptInt("min"), Max: f.OptInt("max")}
-		if v := f.OptInt("max_length"); v != nil {
-			n := int(*v)
-			fy.MaxLength = &n
-		}
 		if err := f.Err(); err != nil {
 			return nil, fmt.Errorf("fact %q: %w", name, err)
 		}
@@ -199,11 +189,11 @@ func readProfile(data []byte) (*profileYAML, error) {
 func readWhen(when map[string]*yamlite.Node) (map[string]condYAML, error) {
 	out := make(map[string]condYAML, len(when))
 	for fact, n := range when {
-		f := n.Read("eq", "gte", "lte", "in", "any_in", "all_in", "first_word_in")
+		f := n.Read("eq", "gte", "lte", "in", "any_in", "all_in", "tier_in")
 		c := condYAML{
 			Gte: f.OptInt("gte"), Lte: f.OptInt("lte"),
 			In: f.OptStrings("in"), AnyIn: f.OptStrings("any_in"), AllIn: f.OptStrings("all_in"),
-			FirstWordIn: f.OptStrings("first_word_in"),
+			TierIn: f.OptStrings("tier_in"),
 		}
 		if eq := f.OptNode("eq"); eq != nil {
 			switch eq.Kind {
@@ -311,6 +301,9 @@ func parseProfile(data []byte, dir string, rubric *Rubric) (*Profile, error) {
 			if strings.TrimSpace(ry.Reason) == "" {
 				return nil, fmt.Errorf("gate %q row %d: reason is missing", g.ID, i+1)
 			}
+			if !contract.ValidLogbookText(ry.Reason, 1000) {
+				return nil, fmt.Errorf("gate %q row %d: reason exceeds 1000 bytes or holds control characters", g.ID, i+1)
+			}
 			p.gates[g.ID] = append(p.gates[g.ID], gateRow{when: when, pass: *ry.Pass, reason: ry.Reason})
 		}
 	}
@@ -388,33 +381,15 @@ func parseFact(fy factYAML) (factDef, error) {
 		if err := needNone("values", fy.Values != nil); err != nil {
 			return def, err
 		}
-		if err := needNone("min/max", fy.Min != nil || fy.Max != nil); err != nil {
-			return def, err
-		}
-		return def, needNone("max_length", fy.MaxLength != nil)
+		return def, needNone("min/max", fy.Min != nil || fy.Max != nil)
 	case typeInt:
 		if fy.Min == nil || fy.Max == nil || *fy.Min > *fy.Max {
 			return def, fmt.Errorf("an int needs min and max, with min no larger than max")
 		}
 		def.min, def.max = *fy.Min, *fy.Max
-		if err := needNone("values", fy.Values != nil); err != nil {
-			return def, err
-		}
-		return def, needNone("max_length", fy.MaxLength != nil)
+		return def, needNone("values", fy.Values != nil)
 	case typeEnum, typeList:
 		if err := values(); err != nil {
-			return def, err
-		}
-		if err := needNone("min/max", fy.Min != nil || fy.Max != nil); err != nil {
-			return def, err
-		}
-		return def, needNone("max_length", fy.MaxLength != nil)
-	case typeText:
-		if fy.MaxLength == nil || *fy.MaxLength < 1 {
-			return def, fmt.Errorf("text needs max_length of 1 or more")
-		}
-		def.maxLength = *fy.MaxLength
-		if err := needNone("values", fy.Values != nil); err != nil {
 			return def, err
 		}
 		return def, needNone("min/max", fy.Min != nil || fy.Max != nil)
@@ -453,23 +428,21 @@ func (p *Profile) parseWhen(when map[string]condYAML, used map[string]bool) ([]c
 func parseCond(name string, def factDef, cy condYAML) (cond, error) {
 	c := cond{fact: name, typ: def.typ}
 	has := map[string]bool{
-		"eq":            cy.Eq != nil,
-		"gte":           cy.Gte != nil,
-		"lte":           cy.Lte != nil,
-		"in":            cy.In != nil,
-		"any_in":        cy.AnyIn != nil,
-		"all_in":        cy.AllIn != nil,
-		"first_word_in": cy.FirstWordIn != nil,
+		"eq":     cy.Eq != nil,
+		"gte":    cy.Gte != nil,
+		"lte":    cy.Lte != nil,
+		"in":     cy.In != nil,
+		"any_in": cy.AnyIn != nil,
+		"all_in": cy.AllIn != nil,
 	}
 	allowed := map[factType][]string{
 		typeBool: {"eq"},
 		typeInt:  {"eq", "gte", "lte"},
 		typeEnum: {"in"},
-		typeText: {"first_word_in"},
 		typeList: {"any_in", "all_in"},
 	}[def.typ]
 	count := 0
-	for _, op := range []string{"eq", "gte", "lte", "in", "any_in", "all_in", "first_word_in"} {
+	for _, op := range []string{"eq", "gte", "lte", "in", "any_in", "all_in"} {
 		if !has[op] {
 			continue
 		}
@@ -482,8 +455,35 @@ func parseCond(name string, def factDef, cy condYAML) (cond, error) {
 			return c, fmt.Errorf("operator %s does not apply to type %s", op, def.typ)
 		}
 	}
-	if count == 0 {
+
+	if cy.TierIn != nil {
+		if len(cy.TierIn) == 0 {
+			return c, fmt.Errorf("an empty list can never match")
+		}
+		c.tiers = map[contract.Tier]bool{}
+		for _, rawTier := range cy.TierIn {
+			tier := contract.Tier(rawTier)
+			if tier != contract.TierSeen && tier != contract.TierStated && tier != contract.TierUnknown {
+				return c, fmt.Errorf("tier %q must be Seen, Stated or Unknown", rawTier)
+			}
+			if c.tiers[tier] {
+				return c, fmt.Errorf("tier %q is listed twice", rawTier)
+			}
+			c.tiers[tier] = true
+		}
+		if c.tiers[contract.TierUnknown] && count > 0 {
+			return c, fmt.Errorf("tier Unknown has no value and cannot be combined with a value operator")
+		}
+	} else {
+		c.tiers = map[contract.Tier]bool{contract.TierSeen: true, contract.TierStated: true}
+	}
+
+	if count == 0 && cy.TierIn == nil {
 		return c, fmt.Errorf("no operator")
+	}
+	if count == 0 {
+		c.tierOnly = true
+		return c, nil
 	}
 
 	subset := func(list []string) (map[string]bool, error) {
@@ -562,20 +562,6 @@ func parseCond(name string, def factDef, cy condYAML) (cond, error) {
 				return c, err
 			}
 		}
-	case typeText:
-		if len(cy.FirstWordIn) == 0 {
-			return c, fmt.Errorf("an empty list can never match")
-		}
-		c.firstWord = map[string]bool{}
-		for _, w := range cy.FirstWordIn {
-			if !wordPattern.MatchString(w) {
-				return c, fmt.Errorf("word %q must be lower-case letters only", w)
-			}
-			if c.firstWord[w] {
-				return c, fmt.Errorf("word %q is listed twice", w)
-			}
-			c.firstWord[w] = true
-		}
 	}
 	return c, nil
 }
@@ -583,16 +569,21 @@ func parseCond(name string, def factDef, cy condYAML) (cond, error) {
 // CheckFacts holds a record's facts against the profile's declarations.
 //
 // Broken data comes first and gives E_PARSE: a declared fact that is missing,
-// has the wrong type or is out of range. Only then is the unfamiliar
-// reported, with E_NEEDS_SUBTOOL: a fact the profile does not declare, or a
-// value outside a declared set. Facts are checked in name order, so the same
-// record always reports the same error.
+// has the wrong type or is out of range. An Unknown fact (whose null value was
+// already verified in ParseLease) is well-formed and left for the decision
+// tables to match or pause. Only after broken data is ruled out is the
+// unfamiliar reported, with E_NEEDS_SUBTOOL: a fact the profile does not
+// declare, or a value outside a declared set. Facts are checked in name order,
+// so the same record always reports the same error.
 func (p *Profile) CheckFacts(facts map[string]contract.Value) *errs.Error {
 	for _, name := range p.factNames {
 		def := p.facts[name]
 		v, ok := facts[name]
 		if !ok {
 			return errs.New(errs.Parse, errs.MissingFact, name, p.Category)
+		}
+		if v.Kind == contract.KindUnknown {
+			continue
 		}
 		switch def.typ {
 		case typeBool:
@@ -609,13 +600,6 @@ func (p *Profile) CheckFacts(facts map[string]contract.Value) *errs.Error {
 		case typeEnum:
 			if v.Kind != contract.KindString {
 				return errs.New(errs.Parse, errs.InvalidType, name, p.Category)
-			}
-		case typeText:
-			if v.Kind != contract.KindString {
-				return errs.New(errs.Parse, errs.InvalidType, name, p.Category)
-			}
-			if !validText(v.Str, def.maxLength) {
-				return errs.New(errs.Parse, errs.InvalidValue, name, p.Category)
 			}
 		case typeList:
 			if v.Kind != contract.KindList {
@@ -641,6 +625,9 @@ func (p *Profile) CheckFacts(facts map[string]contract.Value) *errs.Error {
 	for _, name := range p.factNames {
 		def := p.facts[name]
 		v := facts[name]
+		if v.Kind == contract.KindUnknown {
+			continue
+		}
 		switch def.typ {
 		case typeEnum:
 			if !def.values[v.Str] {
@@ -657,18 +644,6 @@ func (p *Profile) CheckFacts(facts map[string]contract.Value) *errs.Error {
 		}
 	}
 	return nil
-}
-
-func validText(s string, maxLength int) bool {
-	if strings.TrimSpace(s) == "" || utf8.RuneCountInString(s) > maxLength {
-		return false
-	}
-	for _, r := range s {
-		if unicode.IsControl(r) {
-			return false
-		}
-	}
-	return true
 }
 
 func hasDuplicate(list []string) bool {
@@ -719,6 +694,15 @@ func matches(when []cond, facts map[string]contract.Value) bool {
 }
 
 func (c cond) holds(v contract.Value) bool {
+	if !c.tiers[v.Tier] {
+		return false
+	}
+	if c.tierOnly {
+		return true
+	}
+	if v.Kind == contract.KindUnknown {
+		return false
+	}
 	switch c.typ {
 	case typeBool:
 		return v.Bool == *c.eqBool
@@ -735,8 +719,6 @@ func (c cond) holds(v contract.Value) bool {
 		return true
 	case typeEnum:
 		return c.in[v.Str]
-	case typeText:
-		return c.firstWord[firstWord(v.Str)]
 	case typeList:
 		if c.anyIn != nil {
 			found := false
@@ -757,20 +739,4 @@ func (c cond) holds(v contract.Value) bool {
 		return true
 	}
 	return false
-}
-
-// firstWord returns the leading run of ASCII letters in s, lower-cased, after
-// any leading spaces. Text that opens with anything else has no first word
-// and so matches no list.
-func firstWord(s string) string {
-	s = strings.TrimLeftFunc(s, unicode.IsSpace)
-	end := 0
-	for end < len(s) {
-		ch := s[end]
-		if (ch < 'a' || ch > 'z') && (ch < 'A' || ch > 'Z') {
-			break
-		}
-		end++
-	}
-	return strings.ToLower(s[:end])
 }

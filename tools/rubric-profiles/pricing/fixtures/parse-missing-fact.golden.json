@@ -3,10 +3,11 @@
   "worker": "assay",
   "id": "PA-4020",
   "category": "pricing",
+  "profile": "pricing",
   "rules": {
     "rubric_version": 1,
     "profile": "pricing",
-    "profile_version": 1
+    "profile_version": 2
   },
   "error": {
     "code": "E_PARSE",

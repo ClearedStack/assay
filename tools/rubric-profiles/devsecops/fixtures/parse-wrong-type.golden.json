@@ -3,10 +3,11 @@
   "worker": "assay",
   "id": "PA-2017",
   "category": "devsecops",
+  "profile": "devsecops",
   "rules": {
     "rubric_version": 1,
     "profile": "devsecops",
-    "profile_version": 1
+    "profile_version": 2
   },
   "error": {
     "code": "E_PARSE",

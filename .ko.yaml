@@ -5,7 +5,15 @@
 #
 # --bare pushes to exactly that name. The digest it prints is what the
 # deployer pins with an image override on deploy/.
-defaultBaseImage: cgr.dev/chainguard/static:latest
+#
+# The base image is Chainguard's shell-less non-root static image, pinned to
+# the linux/arm64 build the running image was made from (it was
+# cgr.dev/chainguard/static:latest on 2026-10-28), so a rebuild of the same
+# source gives the same image.
+defaultBaseImage: cgr.dev/chainguard/static@sha256:8f9c7533c7709270342660bca209e5fc593483c27f95283e1082424c1e0da967
+
+defaultPlatforms:
+  - linux/arm64
 
 builds:
   - id: assay
@@ -17,3 +25,5 @@ builds:
     ldflags:
       - -s
       - -w
+      - -buildid=
+

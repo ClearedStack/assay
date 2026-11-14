@@ -4,109 +4,83 @@
   "id": "PA-4002",
   "state": "scored",
   "category": "pricing",
+  "profile": "pricing",
   "rules": {
     "rubric_version": 1,
     "profile": "pricing",
-    "profile_version": 1
+    "profile_version": 2,
+    "gates": {
+      "public_source": 3,
+      "runs_in_browser": 4,
+      "private_by_design": 5,
+      "one_job": 2,
+      "arithmetic_not_advice": 2
+    },
+    "factors": {
+      "need": 1,
+      "gap": 5,
+      "public_source_strength": 2,
+      "browser_fit": 2,
+      "readable_size": 1,
+      "checkable": 1,
+      "low_upkeep": 1
+    }
   },
-  "gates": [
-    {
-      "id": "public_source",
-      "name": "Public source",
-      "pass": true,
-      "rule": 3,
+  "gates": {
+    "public_source": {
+      "passed": true,
       "reason": "The rules come from officially released public material."
     },
-    {
-      "id": "runs_in_browser",
-      "name": "Runs in the browser",
-      "pass": true,
-      "rule": 4,
+    "runs_in_browser": {
+      "passed": true,
       "reason": "It runs entirely client-side."
     },
-    {
-      "id": "private_by_design",
-      "name": "Private by design",
-      "pass": true,
-      "rule": 5,
+    "private_by_design": {
+      "passed": true,
       "reason": "It works offline, with no account, no tracking and connect-src 'self'."
     },
-    {
-      "id": "one_job",
-      "name": "One job",
-      "pass": true,
-      "rule": 2,
-      "reason": "It does one job, stated in one verb-first sentence."
+    "one_job": {
+      "passed": true,
+      "reason": "It performs one focused job from the category's closed job vocabulary."
     },
-    {
-      "id": "arithmetic_not_advice",
-      "name": "Arithmetic, not advice",
-      "pass": true,
-      "rule": 2,
+    "arithmetic_not_advice": {
+      "passed": true,
       "reason": "It computes numbers, structures data or looks up citations."
     }
-  ],
-  "factors": [
-    {
-      "id": "need",
-      "name": "Need for small businesses",
+  },
+  "factors": {
+    "need": {
       "rating": 5,
-      "weight": 4,
-      "points": 20,
-      "rule": 1
+      "weight": 4
     },
-    {
-      "id": "gap",
-      "name": "Gap",
+    "gap": {
       "rating": 1,
-      "weight": 4,
-      "points": 4,
-      "rule": 5
+      "weight": 4
     },
-    {
-      "id": "public_source_strength",
-      "name": "Strength of public source",
+    "public_source_strength": {
       "rating": 4,
-      "weight": 3,
-      "points": 12,
-      "rule": 2
+      "weight": 3
     },
-    {
-      "id": "browser_fit",
-      "name": "Fits in a browser",
+    "browser_fit": {
       "rating": 4,
-      "weight": 3,
-      "points": 12,
-      "rule": 2
+      "weight": 3
     },
-    {
-      "id": "readable_size",
-      "name": "Small enough to read",
+    "readable_size": {
       "rating": 5,
-      "weight": 2,
-      "points": 10,
-      "rule": 1
+      "weight": 2
     },
-    {
-      "id": "checkable",
-      "name": "Can be checked",
+    "checkable": {
       "rating": 5,
-      "weight": 2,
-      "points": 10,
-      "rule": 1
+      "weight": 2
     },
-    {
-      "id": "low_upkeep",
-      "name": "Low upkeep of reference data",
+    "low_upkeep": {
       "rating": 5,
-      "weight": 2,
-      "points": 10,
-      "rule": 1
+      "weight": 2
     }
-  ],
-  "total": 78,
-  "recommendation": "Link",
-  "split_merge_review": false,
+  },
+  "score": 78,
+  "recommendation": "link",
+  "split_flag": false,
   "tie_breakers": [
     {
       "id": "roadmap_phase_fit",

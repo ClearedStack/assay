@@ -1,13 +1,13 @@
 Item:     PA-4006
 Category: pricing
-Rules:    rubric v1, profile pricing v1
+Rules:    rubric v1, profile pricing v2
 State:    scored
 
 Knockout gates
   PASS  Public source           The rules come from officially released public material.
   PASS  Runs in the browser     It runs entirely client-side.
   PASS  Private by design       It works offline, with no account, no tracking and connect-src 'self'.
-  PASS  One job                 It does one job, stated in one verb-first sentence.
+  PASS  One job                 It performs one focused job from the category's closed job vocabulary.
   PASS  Arithmetic, not advice  It computes numbers, structures data or looks up citations.
 
 Rubric
@@ -20,7 +20,7 @@ Rubric
   Low upkeep of reference data  3 x 2 =   6
   Total                                  82 / 100
 
-Recommendation: Build
+Recommendation: build
 Split/merge review: yes
 
 Tie-breakers (higher sorts first)

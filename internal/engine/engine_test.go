@@ -110,8 +110,8 @@ func TestScoredOutcomeAddsUp(t *testing.T) {
 		}
 		sum += f.Points
 	}
-	if *out.Total != sum || sum < 20 || sum > 100 {
-		t.Errorf("total %d, factors add up to %d", *out.Total, sum)
+	if *out.Score != sum || sum < 20 || sum > 100 {
+		t.Errorf("score %d, factors add up to %d", *out.Score, sum)
 	}
 }
 
@@ -129,14 +129,14 @@ func TestScreenedOutShowsEveryGateAndNoScore(t *testing.T) {
 		if g.Reason == "" {
 			t.Errorf("gate %s has no public reason", g.ID)
 		}
-		if !g.Pass {
+		if !g.Passed {
 			failed++
 		}
 	}
 	if failed != 1 {
 		t.Errorf("want exactly one failed gate, got %d", failed)
 	}
-	if out.Factors != nil || out.Total != nil || out.Recommendation != "" || out.SplitMergeReview != nil || out.TieBreakers != nil {
+	if out.Factors != nil || out.Score != nil || out.Recommendation != "" || out.SplitFlag != nil || out.TieBreakers != nil {
 		t.Error("a candidate that is screened out must not be scored")
 	}
 }
@@ -147,20 +147,41 @@ func TestPausedAndBrokenItemsCarryNoVerdict(t *testing.T) {
 		state string
 		code  errs.Code
 	}{
-		"fixtures/needs-subtool-unknown-category.input.json":      {contract.StateNeedsSubtool, errs.NeedsSubtool},
-		"pricing/fixtures/needs-subtool-unlisted-verb.input.json": {contract.StateNeedsSubtool, errs.NeedsSubtool},
-		"pricing/fixtures/needs-subtool-unknown-value.input.json": {contract.StateNeedsSubtool, errs.NeedsSubtool},
-		"pricing/fixtures/parse-wrong-type.input.json":            {"", errs.Parse},
-		"fixtures/parse-malformed-json.input.json":                {"", errs.Parse},
+		"fixtures/needs-subtool-unknown-category.input.json":            {contract.StateNeedsSubtool, errs.NeedsSubtool},
+		"pricing/fixtures/needs-subtool-unknown-tier.input.json":        {contract.StateNeedsSubtool, errs.NeedsSubtool},
+		"pricing/fixtures/needs-subtool-unverified-privacy.input.json":  {contract.StateNeedsSubtool, errs.NeedsSubtool},
+		"pricing/fixtures/needs-subtool-unknown-value.input.json":       {contract.StateNeedsSubtool, errs.NeedsSubtool},
+		"pricing/fixtures/parse-wrong-type.input.json":                  {"", errs.Parse},
+		"fixtures/parse-malformed-json.input.json":                      {"", errs.Parse},
 	}
 	for name, want := range cases {
 		out := eng.Evaluate(readFixture(t, name))
 		if out.Error == nil || out.Error.Code != want.code || out.State != want.state {
 			t.Errorf("%s: got state %q, error %v", name, out.State, out.Error)
 		}
-		if out.Gates != nil || out.Factors != nil || out.Total != nil || out.Recommendation != "" {
+		if out.Gates != nil || out.Factors != nil || out.Score != nil || out.Recommendation != "" {
 			t.Errorf("%s: a partial verdict was given", name)
 		}
+	}
+
+	// An Unknown tier on a tie-breaker fact after gates and factors succeed
+	// must also pause cleanly without emitting a partial verdict.
+	raw := readFixture(t, "pricing/fixtures/build.input.json")
+	unknownTie := bytes.Replace(
+		raw,
+		[]byte("\"community_demand\": {\n          \"value\": 14,\n          \"tier\": \"Seen\"\n        }"),
+		[]byte("\"community_demand\": {\n          \"value\": null,\n          \"tier\": \"Unknown\"\n        }"),
+		1,
+	)
+	if bytes.Equal(unknownTie, raw) {
+		t.Fatal("build.input.json no longer carries the expected community_demand block")
+	}
+	out := eng.Evaluate(unknownTie)
+	if out.State != contract.StateNeedsSubtool || out.Error == nil || out.Error.Code != errs.NeedsSubtool || out.Error.Where != "community_demand" {
+		t.Fatalf("expected Unknown tie-breaker to pause at community_demand, got state=%q err=%v", out.State, out.Error)
+	}
+	if out.Gates != nil || out.Factors != nil || out.Score != nil || out.Recommendation != "" || out.TieBreakers != nil {
+		t.Errorf("Unknown tie-breaker leaked a partial verdict: %+v", out)
 	}
 }
 
@@ -180,20 +201,24 @@ func TestErrorsNeverEchoTheInput(t *testing.T) {
 		return r["results"].(map[string]any)["sextant"].(map[string]any)
 	}
 	facts := func(r map[string]any) map[string]any { return observed(r)["facts"].(map[string]any) }
+	seenVal := func(v any) map[string]any { return map[string]any{"value": v, "tier": "Seen"} }
 	mutations := map[string]func(r map[string]any){
 		"unknown envelope field":    func(r map[string]any) { r["host_"+planted] = "10.20.30.40" },
 		"unknown observation field": func(r map[string]any) { observed(r)["password_hunter2"] = "s3cr3t" },
-		"unknown fact":              func(r map[string]any) { facts(r)["password_hunter2"] = "s3cr3t" },
-		"unknown enum value":        func(r map[string]any) { facts(r)["source_kind"] = planted },
-		"unknown list value":        func(r map[string]any) { facts(r)["output_kinds"] = []any{"10.20.30.40"} },
-		"unlisted verb":             func(r map[string]any) { facts(r)["task_sentence"] = "hunter2 is at " + planted },
+		"unknown fact":              func(r map[string]any) { facts(r)["password_hunter2"] = seenVal("s3cr3t") },
+		"unknown enum value":        func(r map[string]any) { facts(r)["source_kind"] = seenVal(planted) },
+		"unknown list value":        func(r map[string]any) { facts(r)["output_kinds"] = seenVal([]any{"10.20.30.40"}) },
+		"unknown core_job":          func(r map[string]any) { facts(r)["core_job"] = seenVal("hunter2@" + planted) },
+		"bad fact tier":             func(r map[string]any) { facts(r)["core_job"] = map[string]any{"value": "rate_calculation", "tier": "hunter2@" + planted} },
+		"bad sub_tool":              func(r map[string]any) { observed(r)["sub_tool"] = "hunter2@" + planted },
+		"bad observed_on":           func(r map[string]any) { observed(r)["observed_on"] = "10.20.30.40" },
 		"unknown category":          func(r map[string]any) { observed(r)["category"] = "db01" },
 		"bad category":              func(r map[string]any) { observed(r)["category"] = planted },
 		"bad item id":               func(r map[string]any) { r["id"] = "s3cr3t@" + planted },
 		"bad lease":                 func(r map[string]any) { r["lease"] = "hunter2 " + planted },
 		"bad lane":                  func(r map[string]any) { r["lane"] = planted },
 		"bad expires":               func(r map[string]any) { r["expires"] = "10.20.30.40" },
-		"wrong type":                func(r map[string]any) { facts(r)["task_count"] = "hunter2" },
+		"wrong type":                func(r map[string]any) { facts(r)["task_count"] = seenVal("hunter2") },
 		"bad state":                 func(r map[string]any) { r["state"] = planted },
 	}
 	for name, mutate := range mutations {
@@ -226,8 +251,8 @@ func TestErrorsNeverEchoTheInput(t *testing.T) {
 	}
 }
 
-func scored(id string, total int, ties ...int64) *contract.Outcome {
-	o := &contract.Outcome{ItemID: id, State: contract.StateScored, Total: &total}
+func scored(id string, score int, ties ...int64) *contract.Outcome {
+	o := &contract.Outcome{ItemID: id, State: contract.StateScored, Score: &score}
 	for i, v := range ties {
 		o.TieBreakers = append(o.TieBreakers, contract.TieBreaker{ID: "t" + strconv.Itoa(i), Value: v})
 	}
@@ -283,13 +308,18 @@ func TestRealTieBreak(t *testing.T) {
 	eng := newEngine(t)
 	raw := readFixture(t, "pricing/fixtures/build.input.json")
 	a := eng.Evaluate(raw)
-	more := bytes.Replace(raw, []byte(`"community_demand": 14`), []byte(`"community_demand": 15`), 1)
+	more := bytes.Replace(
+		raw,
+		[]byte("\"community_demand\": {\n          \"value\": 14,"),
+		[]byte("\"community_demand\": {\n          \"value\": 15,"),
+		1,
+	)
 	if bytes.Equal(more, raw) {
 		t.Fatal("the fixture no longer has the value this test changes")
 	}
 	b := eng.Evaluate(more)
-	if *a.Total != *b.Total {
-		t.Fatal("the two candidates should have the same total")
+	if *a.Score != *b.Score {
+		t.Fatal("the two candidates should have the same score")
 	}
 	if engine.Compare(b, a) >= 0 {
 		t.Error("the candidate with more community demand should sort first")

@@ -4,10 +4,11 @@
   "id": "PA-3013",
   "state": "needs_subtool",
   "category": "market",
+  "profile": "market",
   "rules": {
     "rubric_version": 1,
     "profile": "market",
-    "profile_version": 1
+    "profile_version": 2
   },
   "error": {
     "code": "E_NEEDS_SUBTOOL",

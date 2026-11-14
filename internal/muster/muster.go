@@ -92,13 +92,22 @@ var ErrLeaseGone = errors.New("lease is no longer held")
 // which of the two 409 refusals to send. To a caller it is ErrLeaseGone.
 var errMoveNotAllowed = fmt.Errorf("that move is not allowed: %w", ErrLeaseGone)
 
+// ErrLogbookRefused and ErrLogbookUnknownValue simulate the two refusals
+// Muster sends when Logbook rejects a field or has no rule for a value.
+// Each wraps the *errs.Error the HTTP client produces for that refusal.
+var (
+	ErrLogbookRefused      = fmt.Errorf("the record store refused a field: %w", rejected())
+	ErrLogbookUnknownValue = fmt.Errorf("the record store has no rule for a value: %w", contractUnknown())
+)
+
 func timeoutError() *errs.Error { return errs.New(errs.Timeout, errs.HubTimeout, "hub") }
 func unavailable() *errs.Error  { return errs.New(errs.Timeout, errs.HubUnavailable, "hub") }
 func replyInvalid() *errs.Error { return errs.New(errs.Parse, errs.HubReplyInvalid, "hub") }
 func rejected() *errs.Error     { return errs.New(errs.Parse, errs.HubRejectedRequest, "hub") }
 
-// contractUnknown means the hub does not speak contract v1. Nothing will
-// work until one side is redeployed, so the caller keeps its work and waits.
+// contractUnknown means the hub does not speak contract v1, or Logbook has
+// no rule for a value. Nothing will work until one side is redeployed, so
+// the caller keeps its work and waits.
 func contractUnknown() *errs.Error {
 	return errs.New(errs.NeedsSubtool, errs.HubContractUnknown, "hub")
 }

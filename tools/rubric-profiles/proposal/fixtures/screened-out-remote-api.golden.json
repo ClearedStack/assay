@@ -4,46 +4,39 @@
   "id": "PA-5009",
   "state": "screened_out",
   "category": "proposal",
+  "profile": "proposal",
   "rules": {
     "rubric_version": 1,
     "profile": "proposal",
-    "profile_version": 1
+    "profile_version": 2,
+    "gates": {
+      "public_source": 3,
+      "runs_in_browser": 2,
+      "private_by_design": 2,
+      "one_job": 3,
+      "arithmetic_not_advice": 2
+    }
   },
-  "gates": [
-    {
-      "id": "public_source",
-      "name": "Public source",
-      "pass": true,
-      "rule": 3,
+  "gates": {
+    "public_source": {
+      "passed": true,
       "reason": "The rules come from officially released public material."
     },
-    {
-      "id": "runs_in_browser",
-      "name": "Runs in the browser",
-      "pass": false,
-      "rule": 2,
+    "runs_in_browser": {
+      "passed": false,
       "reason": "It needs a remote API."
     },
-    {
-      "id": "private_by_design",
-      "name": "Private by design",
-      "pass": false,
-      "rule": 2,
+    "private_by_design": {
+      "passed": false,
       "reason": "It requires an account."
     },
-    {
-      "id": "one_job",
-      "name": "One job",
-      "pass": false,
-      "rule": 3,
-      "reason": "The job is not stated as an active, verb-first sentence."
+    "one_job": {
+      "passed": false,
+      "reason": "Its scope is a multi-step suite or open-ended advisory workflow rather than one job."
     },
-    {
-      "id": "arithmetic_not_advice",
-      "name": "Arithmetic, not advice",
-      "pass": true,
-      "rule": 2,
+    "arithmetic_not_advice": {
+      "passed": true,
       "reason": "It computes numbers, structures data or looks up citations."
     }
-  ]
+  }
 }

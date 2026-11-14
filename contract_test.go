@@ -326,9 +326,10 @@ func TestStandInAnswersAsTheContractSays(t *testing.T) {
 	stateless := map[string]bool{
 		"lease": true, "lease-nothing": true,
 		"refused-400-not_json": true, "refused-400-unknown_field": true, "refused-400-missing_field": true,
-		"refused-400-bad_field": true, "refused-400-bad_field-use-needs_subtool": true,
+		"refused-400-bad_field": true, "refused-400-bad_field-use-needs_subtool": true, "refused-400-bad_field-logbook": true,
 		"refused-401-no_credential": true, "refused-404-no_such_call": true, "refused-405-wrong_method": true,
-		"refused-409-lease_not_held": true, "refused-415-wrong_type": true, "refused-422-unknown_contract": true,
+		"refused-409-lease_not_held": true, "refused-415-wrong_type": true,
+		"refused-422-unknown_contract": true, "refused-422-unknown_value-logbook": true,
 	}
 	const token = "made-up-token"
 	for _, ex := range loadExamples(t) {
@@ -338,6 +339,12 @@ func TestStandInAnswersAsTheContractSays(t *testing.T) {
 		delete(stateless, ex.name)
 		t.Run(ex.name, func(t *testing.T) {
 			hub := muster.NewMemory()
+			switch ex.Given.Condition {
+			case "logbook refuses a field":
+				hub.FailLease(1, muster.ErrLogbookRefused)
+			case "logbook has no rule for a value":
+				hub.FailLease(1, muster.ErrLogbookUnknownValue)
+			}
 			if ex.Expect.Status == 200 {
 				hub.Add([]byte(compactJSON(t, ex.Expect.Body)))
 			}
@@ -385,5 +392,98 @@ func TestStandInAnswersAsTheContractSays(t *testing.T) {
 	}
 	for name := range stateless {
 		t.Errorf("the example %s is no longer in testdata/contract", name)
+	}
+}
+
+// TestEvaluationsMatchLogbookAndCountersign checks every saved scored and
+// screened-out outcome against the three consumers of Assay's complete
+// result: Muster's tx.Evaluation, Logbook's core.check_evaluation, and
+// Countersign's evaluation reader.
+func TestEvaluationsMatchLogbookAndCountersign(t *testing.T) {
+	paths, err := filepath.Glob("tools/rubric-profiles/*/fixtures/*.golden.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	more, err := filepath.Glob("tools/rubric-profiles/fixtures/*.golden.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths = append(paths, more...)
+	sort.Strings(paths)
+
+	recs := map[string]bool{"build": true, "link": true, "park": true, "reject": true}
+	checkedScored, checkedScreened := 0, 0
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var head struct {
+			State string `json:"state"`
+		}
+		if err := json.Unmarshal(data, &head); err != nil {
+			t.Fatalf("%s: %v", path, err)
+		}
+		if head.State != contract.StateScored && head.State != contract.StateScreenedOut {
+			continue
+		}
+
+		// 1. Logbook's core.check_evaluation.
+		if !contract.HasGates(data) {
+			t.Errorf("%s: missing gates", path)
+		}
+		if perr := contract.CheckEvaluation(data); perr != nil {
+			t.Errorf("%s: Logbook refuses evaluation: %v", path, perr)
+		}
+
+		// 2. Muster's tx.Evaluation shape.
+		var musterEval struct {
+			Profile        string          `json:"profile"`
+			Gates          json.RawMessage `json:"gates"`
+			Factors        json.RawMessage `json:"factors"`
+			Score          *int            `json:"score"`
+			Recommendation *string         `json:"recommendation"`
+			SplitFlag      bool            `json:"split_flag"`
+		}
+		if err := json.Unmarshal(data, &musterEval); err != nil || musterEval.Profile == "" || musterEval.Gates == nil {
+			t.Errorf("%s: Muster could not extract evaluation: %v", path, err)
+		}
+
+		// 3. Countersign's evaluation reader (internal/muster/lease.go).
+		var csEval struct {
+			Score          *int   `json:"score"`
+			Recommendation string `json:"recommendation"`
+			SplitFlag      bool   `json:"split_flag"`
+			Gates          map[string]struct {
+				Passed *bool  `json:"passed"`
+				Reason string `json:"reason"`
+			} `json:"gates"`
+		}
+		if err := json.Unmarshal(data, &csEval); err != nil {
+			t.Errorf("%s: Countersign could not read evaluation: %v", path, err)
+		}
+		if len(csEval.Gates) != 5 {
+			t.Errorf("%s: want 5 gates, got %d", path, len(csEval.Gates))
+		}
+		if head.State == contract.StateScored {
+			checkedScored++
+			if csEval.Score == nil || *csEval.Score < 20 || *csEval.Score > 100 || !recs[csEval.Recommendation] {
+				t.Errorf("%s: Countersign scored fields invalid: score=%v rec=%q", path, csEval.Score, csEval.Recommendation)
+			}
+		} else {
+			checkedScreened++
+			failed := 0
+			for _, g := range csEval.Gates {
+				if g.Passed != nil && !*g.Passed && strings.TrimSpace(g.Reason) != "" {
+					failed++
+				}
+			}
+			if failed == 0 {
+				t.Errorf("%s: Countersign found no failed gate reason", path)
+			}
+		}
+	}
+	if checkedScored == 0 || checkedScreened == 0 {
+		t.Fatalf("expected both scored and screened_out fixtures, got %d and %d", checkedScored, checkedScreened)
 	}
 }
