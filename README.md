@@ -176,7 +176,7 @@ When data is both broken and unfamiliar, `E_PARSE` wins. An error carries a code
 ## What has been checked
 
 - **Saved examples:** 130 fixture pairs, covering every row of every decision table, plus text goldens for the command.
-- **Muster's contract:** all 52 of Muster's own example files are replayed. Where Assay can make the request, what it sends matches the example to the byte; every answer and every refusal is acted on as the contract says. The same examples are replayed against Assay's stand-in for Muster, so the thing Assay is tested against cannot drift from the contract.
+- **Muster's contract:** every one of Muster's own example files is replayed. Where Assay can make the request, what it sends matches the example to the byte; every answer and every refusal is acted on as the contract says. The same examples are replayed against Assay's stand-in for Muster, so the thing Assay is tested against cannot drift from the contract.
 - **Standard library only:** `go.mod` requires nothing, and a test fails if any Go file imports a package from outside the standard library and this module.
 - **Memory:** a test builds the binary as `ko` does, pushes 6,001 leases through it over HTTP and reads peak memory from the kernel. It measured about 18 MiB against the 30 MiB budget.
 - **Read-only filesystem:** the same test confirms the process writes only inside its spool folder.
