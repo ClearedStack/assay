@@ -174,7 +174,6 @@ When data is both broken and unfamiliar, `E_PARSE` wins. An error carries a code
 | [`internal/report/`](internal/report) | The plain-text report `eval` prints. |
 | [`tools/`](tools) | The sub-tool registry, pure `io/fs` rule verification, and `rubric-profiles`: the rules and their fixtures. |
 | [`deploy/`](deploy), [`kustomization.yaml`](kustomization.yaml), [`.ko.yaml`](.ko.yaml) | Kubernetes objects, Kustomize root, and `ko` build settings. |
-| [`.github/workflows/tests.yml`](.github/workflows/tests.yml) | Read-only GitHub Actions verification (`gofmt`, `go vet`, `go test -race`, `assay check`, and fuzz smoke checks). |
 | [`internal/yamlite/`](internal/yamlite) | A strict reader for the small part of YAML the rule files use. |
 | [`testdata/contract/`](testdata/contract) | Muster's saved contract examples, copied unchanged, and replayed by `contract_test.go`. |
 | [`brand/`](brand) | The Assay logo and mark, for light and dark backgrounds. |

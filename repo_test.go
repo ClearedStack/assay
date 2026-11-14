@@ -402,7 +402,7 @@ func TestNamesComeFromTheRegistry(t *testing.T) {
 	}
 }
 
-func TestKustomizationAndWorkflow(t *testing.T) {
+func TestKustomization(t *testing.T) {
 	raw, err := os.ReadFile("kustomization.yaml")
 	if err != nil {
 		t.Fatal(err)
@@ -423,24 +423,4 @@ func TestKustomizationAndWorkflow(t *testing.T) {
 		t.Errorf("deploy/assay.yaml missing: %v", err)
 	}
 
-	wfRaw, err := os.ReadFile(".github/workflows/tests.yml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	wfText := string(wfRaw)
-	for _, want := range []string{
-		"contents: read",
-		"go vet ./...",
-		"go test -race -count=1 ./...",
-		"go run ./cmd/assay check",
-		"-fuzz=^FuzzParse$",
-		"-fuzz=^FuzzOutcomeEvaluation$",
-		"-fuzz=^FuzzParseAll$",
-		"-fuzz=^FuzzEvaluate$",
-		"-fuzz=^FuzzHTTPClientRefusal$",
-	} {
-		if !strings.Contains(wfText, want) {
-			t.Errorf(".github/workflows/tests.yml missing %q", want)
-		}
-	}
 }
