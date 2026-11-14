@@ -1,0 +1,19 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-3014",
+  "state": "needs_subtool",
+  "category": "market",
+  "profile": "market",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "market",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_NEEDS_SUBTOOL",
+    "reason": "unknown_value",
+    "where": "source_kind",
+    "fingerprint": "33d5b17d4788baaf"
+  }
+}

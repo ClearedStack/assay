@@ -1,0 +1,42 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-4014",
+  "state": "screened_out",
+  "category": "pricing",
+  "profile": "pricing",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "pricing",
+    "profile_version": 1,
+    "gates": {
+      "public_source": 3,
+      "runs_in_browser": 2,
+      "private_by_design": 2,
+      "one_job": 3,
+      "arithmetic_not_advice": 2
+    }
+  },
+  "gates": {
+    "public_source": {
+      "passed": true,
+      "reason": "The rules come from officially released public material."
+    },
+    "runs_in_browser": {
+      "passed": false,
+      "reason": "It needs a remote API."
+    },
+    "private_by_design": {
+      "passed": false,
+      "reason": "It requires an account."
+    },
+    "one_job": {
+      "passed": false,
+      "reason": "The job is not stated as an active, verb-first sentence."
+    },
+    "arithmetic_not_advice": {
+      "passed": true,
+      "reason": "It computes numbers, structures data or looks up citations."
+    }
+  }
+}

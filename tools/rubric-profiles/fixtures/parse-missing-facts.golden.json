@@ -1,0 +1,12 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-9025",
+  "category": "pricing",
+  "error": {
+    "code": "E_PARSE",
+    "reason": "missing_field",
+    "where": "facts",
+    "fingerprint": "79b352c8a77b37ab"
+  }
+}

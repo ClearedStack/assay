@@ -1,0 +1,42 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-1008",
+  "state": "screened_out",
+  "category": "cyber",
+  "profile": "cyber",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "cyber",
+    "profile_version": 1,
+    "gates": {
+      "public_source": 1,
+      "runs_in_browser": 4,
+      "private_by_design": 5,
+      "one_job": 2,
+      "arithmetic_not_advice": 2
+    }
+  },
+  "gates": {
+    "public_source": {
+      "passed": false,
+      "reason": "The governing source is not officially released to the public."
+    },
+    "runs_in_browser": {
+      "passed": true,
+      "reason": "It runs entirely client-side."
+    },
+    "private_by_design": {
+      "passed": true,
+      "reason": "It works offline, with no account, no tracking and connect-src 'self'."
+    },
+    "one_job": {
+      "passed": true,
+      "reason": "It does one job, stated in one verb-first sentence."
+    },
+    "arithmetic_not_advice": {
+      "passed": true,
+      "reason": "It computes numbers, structures data or looks up citations."
+    }
+  }
+}

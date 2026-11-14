@@ -1,0 +1,18 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-3017",
+  "category": "market",
+  "profile": "market",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "market",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_PARSE",
+    "reason": "invalid_type",
+    "where": "task_count",
+    "fingerprint": "f3f91bb79272ae89"
+  }
+}

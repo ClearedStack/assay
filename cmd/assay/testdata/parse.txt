@@ -1,0 +1,10 @@
+Item:     PA-4021
+Category: pricing
+Rules:    rubric v1, profile pricing v1
+State:    (none: the record could not be read)
+
+Error
+  Code:        E_PARSE
+  Reason:      invalid_type
+  Where:       task_count
+  Fingerprint: eed9d44b118dc3f0

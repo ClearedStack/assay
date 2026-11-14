@@ -1,0 +1,10 @@
+Item:     PA-4019
+Category: pricing
+Rules:    rubric v1, profile pricing v1
+State:    needs_subtool
+
+Error
+  Code:        E_NEEDS_SUBTOOL
+  Reason:      no_matching_rule
+  Where:       one_job
+  Fingerprint: faa92c6097a13580

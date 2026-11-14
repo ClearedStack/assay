@@ -1,0 +1,18 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-2017",
+  "category": "devsecops",
+  "profile": "devsecops",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "devsecops",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_PARSE",
+    "reason": "invalid_type",
+    "where": "task_count",
+    "fingerprint": "a39bd8f7d4af7cc3"
+  }
+}

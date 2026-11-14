@@ -1,0 +1,18 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-4023",
+  "category": "pricing",
+  "profile": "pricing",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "pricing",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_PARSE",
+    "reason": "invalid_value",
+    "where": "output_kinds",
+    "fingerprint": "9cd4c4904ff210ce"
+  }
+}

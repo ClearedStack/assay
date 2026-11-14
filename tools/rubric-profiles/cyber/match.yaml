@@ -1,0 +1,6 @@
+# The matching rule: which records this profile takes.
+profile: cyber
+match:
+  contract: v1
+  state: observed
+  category: cyber

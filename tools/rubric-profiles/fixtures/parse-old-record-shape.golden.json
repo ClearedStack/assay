@@ -1,0 +1,10 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "error": {
+    "code": "E_PARSE",
+    "reason": "missing_field",
+    "where": "lease",
+    "fingerprint": "7feba6bcbd7a87e9"
+  }
+}

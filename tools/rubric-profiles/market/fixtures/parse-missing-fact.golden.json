@@ -1,0 +1,18 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-3016",
+  "category": "market",
+  "profile": "market",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "market",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_PARSE",
+    "reason": "missing_fact",
+    "where": "worked_examples",
+    "fingerprint": "730cedc6a4a2b3c8"
+  }
+}

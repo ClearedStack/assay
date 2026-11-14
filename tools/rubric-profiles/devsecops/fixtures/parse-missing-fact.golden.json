@@ -1,0 +1,18 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-2016",
+  "category": "devsecops",
+  "profile": "devsecops",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "devsecops",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_PARSE",
+    "reason": "missing_fact",
+    "where": "worked_examples",
+    "fingerprint": "f4e882b4f87d094e"
+  }
+}

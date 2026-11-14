@@ -1,0 +1,19 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-3015",
+  "state": "needs_subtool",
+  "category": "market",
+  "profile": "market",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "market",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_NEEDS_SUBTOOL",
+    "reason": "no_matching_rule",
+    "where": "one_job",
+    "fingerprint": "10ead2041a5f13fe"
+  }
+}

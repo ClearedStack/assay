@@ -1,0 +1,13 @@
+# Assay's sub-tools: the rules for particular cases.
+#
+# Each sub-tool lives in its own folder under tools/ and has three parts:
+# a matching rule, the logic, and fixtures. The paths under "parts" are
+# relative to the sub-tool's folder.
+sub_tools:
+  - name: rubric-profiles
+    path: rubric-profiles
+    responsibility: "Category-specific rule sets and golden test fixtures defining deterministic gate checks and rubric factor mappings."
+    parts:
+      match: "<category>/match.yaml"
+      logic: "rubric.yaml, <category>/profile.yaml and the Go code in the folder"
+      fixtures: "fixtures/ and <category>/fixtures/"

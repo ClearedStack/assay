@@ -1,0 +1,139 @@
+# Assay in the cs-workers namespace.
+#
+# Built with ko (see .ko.yaml), pushed to the cluster's local Lazarette
+# registry, and pinned by digest below so nothing is pulled from outside at
+# runtime. Replace the placeholder digest with the linux/arm64 image digest
+# pushed to Lazarette before applying. The cs-workers namespace belongs to the
+# platform and is not created by this file.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: assay
+  namespace: cs-workers
+  labels:
+    app.kubernetes.io/name: assay
+    app.kubernetes.io/part-of: clearedstack
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assay
+  namespace: cs-workers
+  labels:
+    app.kubernetes.io/name: assay
+    app.kubernetes.io/part-of: clearedstack
+    app.kubernetes.io/version: v0.1.0-draft
+spec:
+  replicas: 1
+  # One worker at a time: stop the old pod before starting the new one.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: assay
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: assay
+        app.kubernetes.io/part-of: clearedstack
+    spec:
+      serviceAccountName: assay
+      # The token is how Assay proves who it is to Muster. It holds no
+      # database credential and is given no other secret.
+      automountServiceAccountToken: true
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values: ["arm64"]
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: ["cm3588-plus"]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: assay
+          # Replace the zero digest with the linux/arm64 digest pushed to Lazarette.
+          image: lazarette.clearedstack.svc.cluster.local:5000/assay@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          args: ["run"]
+          env:
+            - name: CONTRACT_VERSION
+              value: v1
+            - name: MUSTER_URL
+              value: http://muster.clearedstack.svc.cluster.local:8080
+            - name: ASSAY_SPOOL_DIR
+              value: /var/spool/cs
+            # Tells the Go runtime to collect garbage well before the
+            # container's limit is reached.
+            - name: GOMEMLIMIT
+              value: 24MiB
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 30Mi
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: spool
+              mountPath: /var/spool/cs
+      volumes:
+        # The only writable path. It outlives a container restart, which is
+        # what the spool is for. It does not outlive the pod; nothing is lost
+        # if it goes, because Muster leases the record again and the same
+        # record always scores the same.
+        - name: spool
+          emptyDir:
+            sizeLimit: 16Mi
+---
+# Default deny, both ways, opening only HTTP (TCP 8080) to Muster in
+# clearedstack and DNS (UDP/TCP 53) to kube-system so Muster's name resolves.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: assay
+  namespace: cs-workers
+  labels:
+    app.kubernetes.io/name: assay
+    app.kubernetes.io/part-of: clearedstack
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: assay
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: clearedstack
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: muster
+      ports:
+        - protocol: TCP
+          port: 8080
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

@@ -1,0 +1,111 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-5003",
+  "state": "scored",
+  "category": "proposal",
+  "profile": "proposal",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "proposal",
+    "profile_version": 1,
+    "gates": {
+      "public_source": 3,
+      "runs_in_browser": 4,
+      "private_by_design": 5,
+      "one_job": 2,
+      "arithmetic_not_advice": 2
+    },
+    "factors": {
+      "need": 3,
+      "gap": 3,
+      "public_source_strength": 3,
+      "browser_fit": 3,
+      "readable_size": 3,
+      "checkable": 3,
+      "low_upkeep": 4
+    }
+  },
+  "gates": {
+    "public_source": {
+      "passed": true,
+      "reason": "The rules come from officially released public material."
+    },
+    "runs_in_browser": {
+      "passed": true,
+      "reason": "It runs entirely client-side."
+    },
+    "private_by_design": {
+      "passed": true,
+      "reason": "It works offline, with no account, no tracking and connect-src 'self'."
+    },
+    "one_job": {
+      "passed": true,
+      "reason": "It does one job, stated in one verb-first sentence."
+    },
+    "arithmetic_not_advice": {
+      "passed": true,
+      "reason": "It computes numbers, structures data or looks up citations."
+    }
+  },
+  "factors": {
+    "need": {
+      "rating": 3,
+      "weight": 4
+    },
+    "gap": {
+      "rating": 3,
+      "weight": 4
+    },
+    "public_source_strength": {
+      "rating": 3,
+      "weight": 3
+    },
+    "browser_fit": {
+      "rating": 3,
+      "weight": 3
+    },
+    "readable_size": {
+      "rating": 3,
+      "weight": 2
+    },
+    "checkable": {
+      "rating": 3,
+      "weight": 2
+    },
+    "low_upkeep": {
+      "rating": 3,
+      "weight": 2
+    }
+  },
+  "score": 60,
+  "recommendation": "park",
+  "split_flag": false,
+  "tie_breakers": [
+    {
+      "id": "roadmap_phase_fit",
+      "name": "Roadmap phase fit",
+      "value": 2
+    },
+    {
+      "id": "gap_severity",
+      "name": "Gap severity",
+      "value": 3
+    },
+    {
+      "id": "low_upkeep",
+      "name": "Low upkeep",
+      "value": 3
+    },
+    {
+      "id": "small_code_footprint",
+      "name": "Small code footprint",
+      "value": 3
+    },
+    {
+      "id": "community_demand",
+      "name": "Community demand",
+      "value": 14
+    }
+  ]
+}

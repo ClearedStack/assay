@@ -1,0 +1,19 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-4017",
+  "state": "needs_subtool",
+  "category": "pricing",
+  "profile": "pricing",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "pricing",
+    "profile_version": 1
+  },
+  "error": {
+    "code": "E_NEEDS_SUBTOOL",
+    "reason": "unknown_fact",
+    "where": "facts",
+    "fingerprint": "e829209dafda190e"
+  }
+}

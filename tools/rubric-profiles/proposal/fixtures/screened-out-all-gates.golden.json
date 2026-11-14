@@ -1,0 +1,42 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-5008",
+  "state": "screened_out",
+  "category": "proposal",
+  "profile": "proposal",
+  "rules": {
+    "rubric_version": 1,
+    "profile": "proposal",
+    "profile_version": 1,
+    "gates": {
+      "public_source": 2,
+      "runs_in_browser": 1,
+      "private_by_design": 1,
+      "one_job": 1,
+      "arithmetic_not_advice": 1
+    }
+  },
+  "gates": {
+    "public_source": {
+      "passed": false,
+      "reason": "The governing source is not a statute, a regulation or an official government publication."
+    },
+    "runs_in_browser": {
+      "passed": false,
+      "reason": "It needs a backend server."
+    },
+    "private_by_design": {
+      "passed": false,
+      "reason": "It does not work offline."
+    },
+    "one_job": {
+      "passed": false,
+      "reason": "It does more than one job."
+    },
+    "arithmetic_not_advice": {
+      "passed": false,
+      "reason": "It renders advice or a legal conclusion."
+    }
+  }
+}

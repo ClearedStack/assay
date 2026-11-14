@@ -1,0 +1,13 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-9005",
+  "state": "needs_subtool",
+  "category": "pricing",
+  "error": {
+    "code": "E_NEEDS_SUBTOOL",
+    "reason": "unknown_field",
+    "where": "record",
+    "fingerprint": "43051ce46f88ec08"
+  }
+}

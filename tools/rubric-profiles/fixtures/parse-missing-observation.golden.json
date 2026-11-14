@@ -1,0 +1,11 @@
+{
+  "contract": "v1",
+  "worker": "assay",
+  "id": "PA-9021",
+  "error": {
+    "code": "E_PARSE",
+    "reason": "missing_field",
+    "where": "sextant",
+    "fingerprint": "347f6419cdb134b8"
+  }
+}

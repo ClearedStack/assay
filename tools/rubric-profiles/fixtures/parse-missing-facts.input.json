@@ -1,0 +1,17 @@
+{
+  "lease": "PA-9025.1",
+  "kind": "item",
+  "id": "PA-9025",
+  "state": "observed",
+  "lane": "normal",
+  "attempt": 1,
+  "expires": "2026-01-05T09:01:00Z",
+  "results": {
+    "sextant": {
+      "category": "pricing"
+    },
+    "trawl": {
+      "source": "made-up source"
+    }
+  }
+}
