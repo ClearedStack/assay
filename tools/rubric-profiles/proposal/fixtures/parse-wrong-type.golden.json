@@ -7,7 +7,7 @@
   "rules": {
     "rubric_version": 1,
     "profile": "proposal",
-    "profile_version": 3
+    "profile_version": 4
   },
   "error": {
     "code": "E_PARSE",

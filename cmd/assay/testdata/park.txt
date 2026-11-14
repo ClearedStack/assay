@@ -1,6 +1,6 @@
 Item:     PA-4003
 Category: pricing
-Rules:    rubric v1, profile pricing v3
+Rules:    rubric v1, profile pricing v4
 State:    scored
 
 Knockout gates
