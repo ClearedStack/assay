@@ -152,7 +152,7 @@ Keeping the 1-based rule row numbers in `rules.gates` and `rules.factors` preser
 
 - Each scored outcome carries the five values, in order. Anything that ranks candidates sorts by `score`, then by each value in turn, higher first.
 - Gap severity is the Gap rating, Low upkeep is the Low-upkeep rating, and Small code footprint is the Small-enough-to-read rating.
-- Roadmap phase fit and Community demand are whole-number facts in the observation: `roadmap_phase_fit` from 0 (no fit) to 3 (current phase), and `community_demand`, a count of distinct public requests (`Seen`, `Designed` or `Stated`; an `Unknown` tier pauses the item with `E_NEEDS_SUBTOOL`).
+- Roadmap phase fit and Community demand are whole-number facts in the observation: `roadmap_phase_fit` from 0 (no fit) to 3 (current phase), and `community_demand`, a count of distinct public requests (`Seen` or `Stated`; an `Unknown` or `Designed` tier pauses the item with `E_NEEDS_SUBTOOL`).
 - If all five are equal, the lower item number sorts first, so the order is never undefined. `assay rank` and `engine.Compare` apply this order.
 
 ### 7. Make "One job" something a machine can decide without free text
@@ -167,7 +167,7 @@ Keeping the 1-based rule row numbers in `rules.gates` and `rules.factors` preser
 - `market`: `record_search`, `set_aside_filter`, `size_standard_check`, `code_lookup`, `clause_crosswalk`, `date_calculation`, `amount_calculation`, `eligibility_check`.
 - `devsecops`: `config_validation`, `manifest_lint`, `format_conversion`, `policy_check`, `schema_diff`, `certificate_check`, `checksum_verification`, `date_calculation`, `amount_calculation`, `eligibility_check`, `record_search`.
 
-`one_job` fails when `task_count >= 2` or `core_job` is in `[multi_workflow, portal_suite, open_ended_advisory]`, passes when `task_count == 1` and `core_job` is in the profile's single-job enum (`Seen`, `Designed` or `Stated`), and pauses with `E_NEEDS_SUBTOOL` if `core_job` is `Unknown` or outside the declared enum.
+`one_job` fails when `task_count >= 2` or `core_job` is in `[multi_workflow, portal_suite, open_ended_advisory]`, passes when `task_count == 1` and `core_job` is in the profile's single-job enum (`Seen` or `Stated`), and pauses with `E_NEEDS_SUBTOOL` if `core_job` is `Unknown`, is `Designed`, or is outside the declared enum.
 
 **Reason:** replacing free-text `task_sentence` with a closed `core_job` enum enforces Sextant's clean-room guarantee by construction while keeping `one_job` deterministic and fail-closed.
 
