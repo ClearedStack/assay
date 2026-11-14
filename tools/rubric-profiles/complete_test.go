@@ -1,12 +1,8 @@
 package rubricprofiles
 
 import (
-	"math/rand"
 	"os"
-	"sort"
 	"testing"
-
-	"github.com/ClearedStack/assay/internal/contract"
 )
 
 // TestTablesAnswerEveryCandidateThatClearsTheGates throws a large, fixed set
@@ -23,123 +19,7 @@ func TestTablesAnswerEveryCandidateThatClearsTheGates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, category := range set.Categories() {
-		p := set.Match(category)
-
-		// Thresholds the rules mention, per number fact.
-		edges := map[string]map[int64]bool{}
-		note := func(conds []cond) {
-			for _, c := range conds {
-				for _, v := range []*int64{c.eqInt, c.gte, c.lte} {
-					if v == nil {
-						continue
-					}
-					if edges[c.fact] == nil {
-						edges[c.fact] = map[int64]bool{}
-					}
-					for _, e := range []int64{*v - 1, *v, *v + 1} {
-						edges[c.fact][e] = true
-					}
-				}
-			}
-		}
-		for _, rows := range p.gates {
-			for _, row := range rows {
-				note(row.when)
-			}
-		}
-		for _, rows := range p.factors {
-			for _, row := range rows {
-				note(row.when)
-			}
-		}
-
-		choices := map[string][]contract.Value{}
-		for _, name := range p.factNames {
-			def := p.facts[name]
-			switch def.typ {
-			case typeBool:
-				choices[name] = []contract.Value{
-					{Kind: contract.KindBool, Tier: contract.TierSeen, Bool: false},
-					{Kind: contract.KindBool, Tier: contract.TierSeen, Bool: true},
-				}
-			case typeInt:
-				vals := map[int64]bool{def.min: true, def.max: true}
-				for e := range edges[name] {
-					if e >= def.min && e <= def.max {
-						vals[e] = true
-					}
-				}
-				var sorted []int64
-				for v := range vals {
-					sorted = append(sorted, v)
-				}
-				sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
-				for _, v := range sorted {
-					choices[name] = append(choices[name], contract.Value{Kind: contract.KindInt, Tier: contract.TierSeen, Int: v})
-				}
-			case typeEnum, typeList:
-				var values []string
-				for v := range def.values {
-					values = append(values, v)
-				}
-				sort.Strings(values)
-				for _, v := range values {
-					if def.typ == typeEnum {
-						choices[name] = append(choices[name], contract.Value{Kind: contract.KindString, Tier: contract.TierSeen, Str: v})
-					} else {
-						choices[name] = append(choices[name], contract.Value{Kind: contract.KindList, Tier: contract.TierSeen, List: []string{v}})
-					}
-				}
-				if def.typ == typeList {
-					choices[name] = append(choices[name], contract.Value{Kind: contract.KindList, Tier: contract.TierSeen, List: values})
-				}
-			}
-		}
-
-		rng := rand.New(rand.NewSource(1)) // fixed seed: the same candidates every run
-		cleared := 0
-		for n := 0; n < 40000; n++ {
-			facts := make(map[string]contract.Value, len(p.factNames))
-			for _, name := range p.factNames {
-				c := choices[name]
-				facts[name] = c[rng.Intn(len(c))]
-			}
-			// Bias half the candidates towards clearing the gates, so the
-			// factor tables get a proper workout.
-			if n%2 == 0 {
-				for _, name := range []string{"needs_backend", "needs_remote_api", "needs_account", "emits_tracking"} {
-					facts[name] = contract.Value{Kind: contract.KindBool, Tier: contract.TierSeen, Bool: false}
-				}
-				for _, name := range []string{"source_public", "works_offline", "connect_src_self"} {
-					facts[name] = contract.Value{Kind: contract.KindBool, Tier: contract.TierSeen, Bool: true}
-				}
-				facts["task_count"] = contract.Value{Kind: contract.KindInt, Tier: contract.TierSeen, Int: 1}
-				facts["output_kinds"] = contract.Value{Kind: contract.KindList, Tier: contract.TierSeen, List: []string{"computed_number"}}
-			}
-			if perr := p.CheckFacts(facts); perr != nil {
-				t.Fatalf("%s: generated facts were refused: %v", category, perr)
-			}
-			pass := true
-			for _, g := range set.Rubric.Gates {
-				d, ok := p.Gate(g.ID, facts)
-				if !ok {
-					t.Fatalf("%s: gate %s gave no verdict for %+v", category, g.ID, facts)
-				}
-				pass = pass && d.Pass
-			}
-			if !pass {
-				continue
-			}
-			cleared++
-			for _, f := range set.Rubric.Factors {
-				if _, _, ok := p.Factor(f.ID, facts); !ok {
-					t.Fatalf("%s: factor %s gave no rating for %+v", category, f.ID, facts)
-				}
-			}
-		}
-		if cleared < 1000 {
-			t.Errorf("%s: only %d generated candidates cleared the gates; the test is not exercising the factor tables", category, cleared)
-		}
+	for _, problem := range CheckCompleteness(set, DefaultCompletenessSamples) {
+		t.Error(problem)
 	}
 }

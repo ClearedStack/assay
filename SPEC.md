@@ -159,7 +159,15 @@ Keeping the 1-based rule row numbers in `rules.gates` and `rules.factors` preser
 
 **Problem:** "describable in one active verb-first sentence" cannot be judged directly without either a model or passing free-text sentences from vendor pages across the clean-room boundary.
 
-**Proposal:** the observation carries `task_count` (`1..50`) and `core_job` (`type: enum`). Each profile declares a closed vocabulary of focused single-job slugs for its domain (aligned with Sextant's `CoreJobs`, such as `rate_calculation`, `amount_calculation`, `date_calculation`, `eligibility_check`, `record_search`, `page_budget_check`, `control_mapping`, `code_lookup`, `config_validation`) alongside broad-scope disqualifiers (`multi_workflow`, `portal_suite`, `open_ended_advisory`). `one_job` fails when `task_count >= 2` or `core_job` is in `[multi_workflow, portal_suite, open_ended_advisory]`, passes when `task_count == 1` and `core_job` is in the profile's single-job enum (`Seen` or `Stated`), and pauses with `E_NEEDS_SUBTOOL` if `core_job` is `Unknown` or outside the declared enum.
+**Proposal:** the observation carries `task_count` (`1..100`) and `core_job` (`type: enum`). Each `version: 3` profile declares a closed vocabulary of focused single-job slugs covering every planned tool archetype in its ClearedStack catalog category plus all four base `CoreJobs` in Sextant (`date_calculation`, `amount_calculation`, `eligibility_check`, `record_search`), alongside broad-scope disqualifiers (`multi_workflow`, `portal_suite`, `open_ended_advisory`):
+
+- `pricing`: `rate_calculation`, `amount_calculation`, `cost_allocation`, `price_escalation`, `price_table_lookup`, `interest_calculation`, `date_calculation`, `eligibility_check`, `record_search`.
+- `proposal`: `page_budget_check`, `section_count`, `compliance_matrix`, `format_check`, `requirement_extraction`, `acronym_table_check`, `date_calculation`, `amount_calculation`, `eligibility_check`, `record_search`.
+- `cyber`: `control_mapping`, `score_calculation`, `requirement_tally`, `citation_lookup`, `marking_generation`, `schema_validation`, `date_calculation`, `amount_calculation`, `eligibility_check`, `record_search`.
+- `market`: `record_search`, `set_aside_filter`, `size_standard_check`, `code_lookup`, `clause_crosswalk`, `date_calculation`, `amount_calculation`, `eligibility_check`.
+- `devsecops`: `config_validation`, `manifest_lint`, `format_conversion`, `policy_check`, `schema_diff`, `certificate_check`, `checksum_verification`, `date_calculation`, `amount_calculation`, `eligibility_check`, `record_search`.
+
+`one_job` fails when `task_count >= 2` or `core_job` is in `[multi_workflow, portal_suite, open_ended_advisory]`, passes when `task_count == 1` and `core_job` is in the profile's single-job enum (`Seen` or `Stated`), and pauses with `E_NEEDS_SUBTOOL` if `core_job` is `Unknown` or outside the declared enum.
 
 **Reason:** replacing free-text `task_sentence` with a closed `core_job` enum enforces Sextant's clean-room guarantee by construction while keeping `one_job` deterministic and fail-closed.
 
@@ -196,7 +204,7 @@ Keeping the 1-based rule row numbers in `rules.gates` and `rules.factors` preser
 
 **Gap:** the specification fixes the gates, the seven weights and the recommendation bands, and those are implemented exactly. It does not say what evidence earns each rating from 1 to 5, in any category.
 
-**Resolution (`version: 2` profiles):** all five profiles (`pricing`, `proposal`, `cyber`, `market`, `devsecops`) use calibrated ClearedStack v3.1 bands:
+**Resolution (`version: 3` profiles):** all five profiles (`pricing`, `proposal`, `cyber`, `market`, `devsecops`) use calibrated ClearedStack v3.1 bands:
 
 - **`need` (`need_signals`):** `>=30` / `15..29` / `7..14` / `2..6` / `0..1` in `pricing` and `cyber`; `>=25` / `12..24` / `5..11` / `2..4` / `0..1` in `proposal`, `market`, and `devsecops`.
 - **`gap` (`best_alternative`):** `none` (5), `paid_only` (4), `outdated` (3), `partial` (2), `complete` (1).

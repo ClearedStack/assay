@@ -42,8 +42,14 @@ go run ./cmd/assay eval tools/rubric-profiles/pricing/fixtures/build.input.json
 # The same result as JSON, which is the result Assay sends Muster
 go run ./cmd/assay eval -format json tools/rubric-profiles/pricing/fixtures/build.input.json
 
-# Evaluate several and print the scored ones in order
+# Evaluate several and print the scored ones in order (or -format json)
 go run ./cmd/assay rank tools/rubric-profiles/*/fixtures/build.input.json
+
+# Verify all rules, golden fixtures, Logbook checks, row coverage and completeness
+go run ./cmd/assay check
+
+# Compare embedded rules against an edited rule folder across saved inputs
+go run ./cmd/assay diff -after /path/to/edited-tools tools/rubric-profiles/pricing/fixtures/*.input.json
 
 # Run the real worker loop over a folder of lease replies, with an in-memory stand-in for Muster
 mkdir -p /tmp/assay-demo && cp tools/rubric-profiles/pricing/fixtures/*.input.json /tmp/assay-demo/
@@ -53,12 +59,12 @@ go run ./cmd/assay run -standin /tmp/assay-demo
 go test ./...
 ```
 
-`eval` prints something like this:
+`eval` and `rank` also accept `-rules DIR` to try an external `tools/` tree without recompiling (`assay run` always uses the rules compiled into the binary). `eval` prints something like this:
 
 ```text
 Item:     PA-4001
 Category: pricing
-Rules:    rubric v1, profile pricing v2
+Rules:    rubric v1, profile pricing v3
 State:    scored
 
 Knockout gates
@@ -93,7 +99,7 @@ Split/merge review: no
 | `ASSAY_POLL_INTERVAL` | `5s` | Wait after Muster had nothing to offer. |
 | `ASSAY_HUB_TIMEOUT` | `10s` | Limit on each call to Muster. |
 
-The image is built from source with [`ko`](https://ko.build); there is no Dockerfile. [`.ko.yaml`](.ko.yaml) pins the static base image by digest in Lazarette for reproducible `linux/arm64` builds, and [`deploy/assay.yaml`](deploy/assay.yaml) holds the ServiceAccount, the hardened Deployment (pinned by digest in Lazarette, `arm64` node affinity excluding `cm3588-plus`) and the default-deny NetworkPolicy.
+The image is built from source with [`ko`](https://ko.build); there is no Dockerfile. [`.ko.yaml`](.ko.yaml) pins the static base image by digest in Lazarette for reproducible `linux/arm64` builds, [`deploy/assay.yaml`](deploy/assay.yaml) holds the ServiceAccount, the hardened Deployment (pinned by digest in Lazarette, `arm64` node affinity excluding `cm3588-plus`) and the default-deny NetworkPolicy, and [`kustomization.yaml`](kustomization.yaml) points Kustomize at `deploy/assay.yaml`.
 
 ### What Assay says to Muster
 
@@ -121,7 +127,7 @@ No threshold lives in Go code. Everything is under [`tools/rubric-profiles/`](to
 | --- | --- | --- |
 | Shared rubric | `rubric.yaml` | The five gates, the seven factors and their weights, the recommendation bands, the split/merge condition and the tie-breaker order. A test holds these to the numbers in `SPEC.md`. |
 | Matching rule | `<category>/match.yaml` | Which items a profile takes. |
-| Logic | `<category>/profile.yaml` | Closed-vocabulary fact declarations (`{value, tier}` envelopes, zero free text) and a decision table for each gate and each factor (`version: 2`). |
+| Logic | `<category>/profile.yaml` | Closed-vocabulary fact declarations (`{value, tier}` envelopes, zero free text) and a decision table for each gate and each factor (`version: 3`). |
 | Fixtures | `<category>/fixtures/` | Saved lease replies (`*.input.json`) and the exact outcome expected for each (`*.golden.json`). |
 
 There are five profiles: `pricing`, `proposal`, `cyber`, `market` and `devsecops`.
@@ -138,7 +144,7 @@ The tests enforce three things about the rules:
 
 1. Edit the table in `<category>/profile.yaml`, or add a new `<category>/` folder with `match.yaml` and `profile.yaml`.
 2. Add a fixture input that makes your row the deciding one.
-3. Run `go test ./tools/... -update` to write the golden files, and **read the diff** before committing. The diff is the change in behaviour.
+3. Run `go run ./cmd/assay check -update` (or `go test ./tools/... -update`) to write the golden files and verify coverage and completeness, and use `go run ./cmd/assay diff -after tools ...` or `git diff` to inspect every changed verdict, score or rank before committing.
 4. Run `go test ./...`.
 
 ## The three error codes
@@ -158,7 +164,7 @@ When data is both broken and unfamiliar, `E_PARSE` wins. An error carries a code
 | [`SPEC.md`](SPEC.md) | The specification. The section "Proposed changes" at the end lists every place this build had to fill a gap, with the reason. |
 | [`PROMPT.md`](PROMPT.md) | The prompt this was built from. |
 | [`component.json`](component.json) | This component’s entry in the ClearedStack naming registry. |
-| [`cmd/assay/`](cmd/assay) | The command: `eval`, `rank`, `run`, `version`. |
+| [`cmd/assay/`](cmd/assay) | The command: `eval`, `rank`, `check`, `diff`, `run`, `version`. |
 | [`internal/contract/`](internal/contract) | The lease reply that comes in, Sextant's `{value, tier}` fact envelope, the evaluation outcome that goes out, and Logbook's `core.evaluation` checks. Strict parsing. |
 | [`internal/engine/`](internal/engine) | Gates, rubric, recommendation, split/merge flag, tie-breakers, and the ordering. |
 | [`internal/errs/`](internal/errs) | The three public error codes. |
@@ -166,27 +172,30 @@ When data is both broken and unfamiliar, `E_PARSE` wins. An error carries a code
 | [`internal/spool/`](internal/spool) | The on-disk buffer for reports Muster could not take. |
 | [`internal/worker/`](internal/worker) | The polling loop. |
 | [`internal/report/`](internal/report) | The plain-text report `eval` prints. |
-| [`tools/`](tools) | The sub-tool registry and `rubric-profiles`: the rules and their fixtures. |
-| [`deploy/`](deploy), [`.ko.yaml`](.ko.yaml) | Kubernetes objects and the `ko` build settings. |
+| [`tools/`](tools) | The sub-tool registry, pure `io/fs` rule verification, and `rubric-profiles`: the rules and their fixtures. |
+| [`deploy/`](deploy), [`kustomization.yaml`](kustomization.yaml), [`.ko.yaml`](.ko.yaml) | Kubernetes objects, Kustomize root, and `ko` build settings. |
+| [`.github/workflows/tests.yml`](.github/workflows/tests.yml) | Read-only GitHub Actions verification (`gofmt`, `go vet`, `go test -race`, `assay check`, and fuzz smoke checks). |
 | [`internal/yamlite/`](internal/yamlite) | A strict reader for the small part of YAML the rule files use. |
 | [`testdata/contract/`](testdata/contract) | Muster's saved contract examples, copied unchanged, and replayed by `contract_test.go`. |
 | [`brand/`](brand) | The Assay logo and mark, for light and dark backgrounds. |
 
 ## What has been checked
 
-- **Saved examples:** 138 fixture pairs using clean-room `{value, tier}` envelopes, covering every row of every decision table across all five `version: 2` profiles, plus text goldens for the command.
+- **Saved examples:** 146 fixture pairs using clean-room `{value, tier}` envelopes, covering every row of every decision table and every planned catalog job archetype across all five `version: 3` profiles, plus text goldens for the command.
 - **Muster's contract:** all 52 of Muster's example files in `contract/v1/examples/` are replayed. Where Assay can make the request, what it sends matches the example to the byte; every answer and every refusal is acted on as the contract says. The same examples are replayed against Assay's stand-in for Muster, so the thing Assay is tested against cannot drift from the contract.
 - **Logbook and Countersign compatibility:** every golden `scored` and `screened_out` outcome is checked against Logbook's `core.check_evaluation` rules, Muster's `tx.Evaluation` projection, and Countersign's evaluation reader.
+- **Native Go fuzzing (`testing.F`):** fuzz targets exercise lease parsing, evaluation projection, strict YAML parsing, full engine determinism, and Muster HTTP refusal handling.
 - **Standard library only:** `go.mod` requires nothing, and a test fails if any Go file imports a package from outside the standard library and this module.
 - **Memory:** a test builds the binary as `ko` does, pushes 6,001 leases through it over HTTP and reads peak memory from the kernel. It measured about 19 MiB against the 30 MiB budget.
 - **Read-only filesystem:** the same test confirms the process writes only inside its spool folder.
 - **No AI, no outside calls in the rules:** a test reads the imports of every package that decides an outcome and fails if one reaches the network, a clock, randomness or the environment.
 - **Errors leak nothing:** tests plant host names, addresses and passwords in leases and in hub failures and check that none comes back in an error or a log line.
-- **Pod hardening:** tests read `deploy/assay.yaml` and `.ko.yaml` and check each clause of the specification's hardening rule, Lazarette digest pinning, `linux/arm64` build target, node affinity and network policy.
+- **Pod hardening:** tests read `deploy/assay.yaml`, `kustomization.yaml` and `.ko.yaml` and check each clause of the specification's hardening rule, Lazarette digest pinning, `linux/arm64` build target, node affinity and network policy.
 
 ## Not yet done
 
-- **Sextant needs to emit `category` and `facts` on `results.sextant`.** Assay now parses Sextant's clean-room `{value, tier}` envelopes (`Seen`, `Stated`, `Unknown` where `value` is `null` iff `tier == "Unknown"`), optional `sub_tool` and `observed_on` provenance fields, and closed-vocabulary `core_job` slugs with zero free text (see "Proposed changes" in `SPEC.md`). Until Sextant's `ready-to-deploy` update emits `category` and the category's `facts` map under `results.sextant`, observations without `category` pause cleanly with `needs_subtool`.
+- **Sextant needs to emit `category` and `facts` on `results.sextant`.** Assay now parses Sextant's clean-room `{value, tier}` envelopes (`Seen`, `Stated`, `Unknown` where `value` is `null` iff `tier == "Unknown"`), optional `sub_tool` and `observed_on` provenance fields, and closed-vocabulary `core_job` slugs covering all 18 planned catalog tools plus Sextant's four base `CoreJobs` with zero free text (see "Proposed changes" in `SPEC.md`). Until Sextant's `ready-to-deploy` update emits `category` and the category's `facts` map under `results.sextant`, observations without `category` pause cleanly with `needs_subtool`.
+- **`Shipkeeper` portless `kind: worker` support for `app.yaml`.** `kustomization.yaml` points directly at `deploy/assay.yaml`, while `app.yaml` remains intentionally omitted until `Shipkeeper` supports portless `kind: worker` workloads (`args: ["run"]`, `MUSTER_URL`, `/var/spool/cs` mount, and no `tcpSocket` probe).
 - **Image digest substitution at bootstrap and build time.** `.ko.yaml` pins `lazarette.clearedstack.svc.cluster.local:5000/static@sha256:0000...` until the upstream Chainguard `static` base image is imported into Lazarette during cluster bootstrap, and `deploy/assay.yaml` pins `lazarette.clearedstack.svc.cluster.local:5000/assay@sha256:0000...` until Keelworks builds, signs, and substitutes the `linux/arm64` image digest.
 - **Cluster `PriorityClass` name and Muster ingress rule.** The Kubernetes name of the "Standard (Workers)" priority class is not yet defined in the cluster, and Muster's `NetworkPolicy` in `clearedstack` must allow ingress on TCP `8080` from `assay` in `cs-workers`.
 - **Reporting and publishing are indirect.** Assay reports to Muster only. Muster gives Bellbuoy an incident step for each failed or paused item, and exposes results through the `pub.*` views. The reason and fingerprint of an error do not travel in Muster's calls; they are in Assay's log.

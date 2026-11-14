@@ -1,15 +1,19 @@
 // Command assay is stage 03 of the ClearedStack pipeline. It screens each
 // candidate against the knockout gates and scores it on the rubric.
 //
-//	assay eval [-format text|json] FILE   evaluate one lease reply
-//	assay rank FILE...                    evaluate several and order them
-//	assay run                             poll Muster as a worker
-//	assay run -standin DIR                run the worker against a stand-in
-//	assay version                         print the version
+//	assay eval [-rules DIR] [-format text|json] FILE   evaluate one lease reply
+//	assay rank [-rules DIR] [-format text|json] FILE...
+//	assay check [-update] [DIR]                        verify rule tables and fixtures
+//	assay diff [-before DIR] -after DIR FILE...        compare two rule sets over leases
+//	assay run                                          poll Muster as a worker
+//	assay run -standin DIR                             run the worker against a stand-in
+//	assay version                                      print the version
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -41,13 +45,16 @@ const (
 const usage = `assay screens a candidate against the knockout gates and scores it on the rubric.
 
 Usage:
-  assay eval [-format text|json] FILE   evaluate one lease reply ("-" reads standard input)
-  assay rank FILE...                    evaluate several and print the scored ones in order
-  assay run                             poll Muster as a worker (configured by environment)
-  assay run -standin DIR                run the worker over the lease replies in DIR, with no Muster
+  assay eval [-rules DIR] [-format text|json] FILE      evaluate one lease reply ("-" reads standard input)
+  assay rank [-rules DIR] [-format text|json] FILE...   evaluate several and print the scored ones in order
+  assay check [-update] [DIR]                           verify rule tables, coverage and fixtures (default: tools)
+  assay diff [-before DIR] -after DIR [-format text|json] FILE...
+                                                        compare two rule sets over lease replies
+  assay run                                             poll Muster as a worker (configured by environment)
+  assay run -standin DIR                                run the worker over the lease replies in DIR, with no Muster
+  assay version                                         print the version
 
 A lease reply is the JSON Muster answers POST /v1/lease with.
-  assay version                         print the version
 
 Exit codes for eval: 0 scored or screened_out, 3 E_NEEDS_SUBTOOL, 4 E_PARSE.`
 
@@ -68,6 +75,10 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 		return cmdEval(args[1:], stdin, stdout, stderr)
 	case "rank":
 		return cmdRank(args[1:], stdout, stderr)
+	case "check":
+		return cmdCheck(args[1:], stdout, stderr)
+	case "diff":
+		return cmdDiff(args[1:], stdout, stderr)
 	case "run":
 		return cmdRun(ctx, args[1:], stdout, stderr, getenv)
 	case "version":
@@ -97,6 +108,23 @@ func newEngine(stderr io.Writer) *engine.Engine {
 	return engine.New(set)
 }
 
+func loadEngine(rulesDir string, stderr io.Writer) *engine.Engine {
+	if rulesDir == "" {
+		return newEngine(stderr)
+	}
+	info, err := os.Stat(rulesDir)
+	if err != nil || !info.IsDir() {
+		say(stderr, "assay: the rules could not be read")
+		return nil
+	}
+	set, err := tools.Load(os.DirFS(rulesDir))
+	if err != nil {
+		say(stderr, "assay: the rules did not load:", err)
+		return nil
+	}
+	return engine.New(set)
+}
+
 func readRecord(path string, stdin io.Reader) ([]byte, error) {
 	r := stdin
 	if path != "-" {
@@ -114,6 +142,7 @@ func readRecord(path string, stdin io.Reader) ([]byte, error) {
 func cmdEval(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("eval", flag.ContinueOnError)
 	fs.SetOutput(stderr)
+	rulesDir := fs.String("rules", "", "load rules from DIR instead of built-in rules")
 	format := fs.String("format", "text", "output format: text or json")
 	if err := fs.Parse(args); err != nil {
 		return exitUsage
@@ -122,7 +151,7 @@ func cmdEval(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		say(stderr, usage)
 		return exitUsage
 	}
-	eng := newEngine(stderr)
+	eng := loadEngine(*rulesDir, stderr)
 	if eng == nil {
 		return exitFailure
 	}
@@ -149,21 +178,40 @@ func cmdEval(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	return exitOK
 }
 
+type rankedEntry struct {
+	Rank           *int                  `json:"rank,omitempty"`
+	ID             string                `json:"id"`
+	State          string                `json:"state"`
+	Score          *int                  `json:"score,omitempty"`
+	Recommendation string                `json:"recommendation,omitempty"`
+	SplitFlag      *bool                 `json:"split_flag,omitempty"`
+	TieBreakers    []contract.TieBreaker `json:"tie_breakers,omitempty"`
+}
+
 func cmdRank(args []string, stdout, stderr io.Writer) int {
-	if len(args) == 0 {
+	fs := flag.NewFlagSet("rank", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	rulesDir := fs.String("rules", "", "load rules from DIR instead of built-in rules")
+	format := fs.String("format", "text", "output format: text or json")
+	if err := fs.Parse(args); err != nil {
+		return exitUsage
+	}
+	if fs.NArg() == 0 || (*format != "text" && *format != "json") {
 		say(stderr, usage)
 		return exitUsage
 	}
-	eng := newEngine(stderr)
-	if eng == nil {
-		return exitFailure
-	}
-	var scored, others []*contract.Outcome
-	for _, path := range args {
+	for _, path := range fs.Args() {
 		if path == "-" {
 			say(stderr, "assay: rank reads files, not standard input")
 			return exitUsage
 		}
+	}
+	eng := loadEngine(*rulesDir, stderr)
+	if eng == nil {
+		return exitFailure
+	}
+	var scored, others []*contract.Outcome
+	for _, path := range fs.Args() {
 		raw, err := readRecord(path, nil)
 		if err != nil {
 			say(stderr, "assay: a record could not be read")
@@ -178,6 +226,43 @@ func cmdRank(args []string, stdout, stderr io.Writer) int {
 	}
 	sort.SliceStable(scored, func(i, j int) bool { return engine.Compare(scored[i], scored[j]) < 0 })
 	sort.SliceStable(others, func(i, j int) bool { return engine.Compare(others[i], others[j]) < 0 })
+
+	if *format == "json" {
+		entries := make([]rankedEntry, 0, len(scored)+len(others))
+		for i, o := range scored {
+			r := i + 1
+			entries = append(entries, rankedEntry{
+				Rank:           &r,
+				ID:             o.ItemID,
+				State:          o.State,
+				Score:          o.Score,
+				Recommendation: o.Recommendation,
+				SplitFlag:      o.SplitFlag,
+				TieBreakers:    o.TieBreakers,
+			})
+		}
+		for _, o := range others {
+			id, state := o.ItemID, o.State
+			if id == "" {
+				id = "(unreadable)"
+			}
+			if state == "" {
+				state = string(o.Error.Code)
+			}
+			entries = append(entries, rankedEntry{ID: id, State: state})
+		}
+		var buf bytes.Buffer
+		enc := json.NewEncoder(&buf)
+		enc.SetEscapeHTML(false)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(entries); err != nil {
+			return exitFailure
+		}
+		if _, err := stdout.Write(buf.Bytes()); err != nil {
+			return exitFailure
+		}
+		return exitOK
+	}
 
 	tw := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
 	say(tw, "Rank\tItem\tTotal\tRecommendation\tTie-breakers")

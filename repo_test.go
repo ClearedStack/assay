@@ -401,3 +401,46 @@ func TestNamesComeFromTheRegistry(t *testing.T) {
 		}
 	}
 }
+
+func TestKustomizationAndWorkflow(t *testing.T) {
+	raw, err := os.ReadFile("kustomization.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	node, err := yamlite.Parse(raw)
+	if err != nil {
+		t.Fatalf("kustomization.yaml: %v", err)
+	}
+	doc := node.Value().(map[string]any)
+	if doc["apiVersion"] != "kustomize.config.k8s.io/v1beta1" || doc["kind"] != "Kustomization" {
+		t.Errorf("unexpected kustomization header: %v", doc)
+	}
+	resources, _ := doc["resources"].([]any)
+	if len(resources) != 1 || resources[0] != "deploy/assay.yaml" {
+		t.Errorf("kustomization.yaml resources must be [deploy/assay.yaml], got %v", resources)
+	}
+	if _, err := os.Stat("deploy/assay.yaml"); err != nil {
+		t.Errorf("deploy/assay.yaml missing: %v", err)
+	}
+
+	wfRaw, err := os.ReadFile(".github/workflows/tests.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wfText := string(wfRaw)
+	for _, want := range []string{
+		"contents: read",
+		"go vet ./...",
+		"go test -race -count=1 ./...",
+		"go run ./cmd/assay check",
+		"-fuzz=^FuzzParse$",
+		"-fuzz=^FuzzOutcomeEvaluation$",
+		"-fuzz=^FuzzParseAll$",
+		"-fuzz=^FuzzEvaluate$",
+		"-fuzz=^FuzzHTTPClientRefusal$",
+	} {
+		if !strings.Contains(wfText, want) {
+			t.Errorf(".github/workflows/tests.yml missing %q", want)
+		}
+	}
+}
